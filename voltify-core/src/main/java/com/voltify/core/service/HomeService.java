@@ -1,5 +1,7 @@
 package com.voltify.core.service;
 
+import java.util.List;
+
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -21,22 +23,15 @@ public class HomeService {
     }
 
     public Home registerHome(Home home) {
-
-        // 1. Şu an giriş yapmış kullanıcıyı SecurityContext'ten al
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        // 2. Bu evin sahibini otomatik olarak bu kullanıcı yap
         home.setOwner(currentUser);
 
-        // 3. Cihazların hangi eve ait olduğunu belirt
         if (home.getAppliances() != null) {
             home.getAppliances().forEach(appliance -> appliance.setHome(home));
         }
 
-        // 4. PostgreSQL veritabanına kaydet
         Home savedHome = homeRepository.save(home);
 
-        // 5. Kaydedilen evi JSON formatına çevirip Kafka'ya fırlat
         try {
             String homeJson = objectMapper.writeValueAsString(savedHome);
             kafkaProducerService.sendMessage("home-registration-topic", homeJson);
@@ -45,5 +40,10 @@ public class HomeService {
         }
 
         return savedHome;
+    }
+
+    public List<Home> getMyHomes() {
+        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return homeRepository.findByOwner(currentUser);
     }
 }

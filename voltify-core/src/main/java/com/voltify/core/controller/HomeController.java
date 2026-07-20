@@ -1,6 +1,9 @@
 package com.voltify.core.controller;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,10 +22,15 @@ public class HomeController {
         this.homeService = homeService;
     }
 
-    // Dışarıdan POST isteği alacak olan endpoint'imiz[cite: 1]
     @PostMapping("/register")
     public ResponseEntity<Home> registerHome(@RequestBody Home home) {
         Home savedHome = homeService.registerHome(home);
         return ResponseEntity.ok(savedHome);
+    }
+
+    @GetMapping("/my-homes")
+    public ResponseEntity<List<Home>> getMyHomes() {
+        List<Home> homes = homeService.getMyHomes();
+        return ResponseEntity.ok(homes);
     }
 }

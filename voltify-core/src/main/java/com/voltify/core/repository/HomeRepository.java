@@ -1,11 +1,13 @@
 package com.voltify.core.repository;
 
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
 import com.voltify.core.entity.Home;
+import com.voltify.core.entity.User;
 
-@Repository
 public interface HomeRepository extends JpaRepository<Home, Long> {
-    // JpaRepository sayesinde save(), findAll(), findById() gibi metotlar otomatik gelir.
+
+    List<Home> findByOwner(User owner);
 }
