@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  
+  postgres:
+    image: postgres:15
+    container_name: voltify-postgres
+    environment:
+      POSTGRES_USER: voltify_user
+      POSTGRES_PASSWORD: voltify_password
+      POSTGRES_DB: voltifydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: voltify-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: voltify-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  
+  ignite:
+    image: apacheignite/ignite:2.15.0
+    container_name: voltify-ignite
+    ports:
+      - "10800:10800"
+      - "47100:47100"
+      - "47500:47500"
+
+volumes:
+  pgdata:
