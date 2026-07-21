@@ -103,6 +103,18 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
+
+		<!-- Apache Ignite - In-Memory Data Grid -->
+		<dependency>
+			<groupId>org.apache.ignite</groupId>
+			<artifactId>ignite-core</artifactId>
+			<version>2.16.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.ignite</groupId>
+			<artifactId>ignite-spring</artifactId>
+			<version>2.16.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -110,6 +122,24 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<jvmArguments>
+						--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED
+						--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+						--add-opens=java.base/java.lang=ALL-UNNAMED
+						--add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+						--add-opens=java.base/java.io=ALL-UNNAMED
+						--add-opens=java.base/java.nio=ALL-UNNAMED
+						--add-opens=java.base/java.util=ALL-UNNAMED
+						--add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+						--add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED
+						--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+						--add-opens=java.base/java.math=ALL-UNNAMED
+						--add-opens=java.base/java.time=ALL-UNNAMED
+						--add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+						--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED
+					</jvmArguments>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

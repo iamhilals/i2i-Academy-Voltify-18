@@ -57,16 +57,22 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
 
-        // 1. Kullanıcıyı email ile bul, yoksa hata fırlat
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthException("Email veya şifre hatalı"));
-
-        // 2. Girilen şifre ile veritabanındaki hash'i karşılaştır
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new AuthException("Email veya şifre hatalı");
+        // 1. Identifier (email VEYA username) belirle
+        String identifier = request.resolveIdentifier();
+        if (identifier == null || identifier.isBlank()) {
+            throw new AuthException("Email veya kullanıcı adı gerekli");
         }
 
-        // 3. Doğruysa token üret ve dön
+        // 2. Kullanıcıyı username VEYA email ile bul
+        User user = userRepository.findByUsernameOrEmail(identifier, identifier)
+                .orElseThrow(() -> new AuthException("Kullanıcı adı/email veya şifre hatalı"));
+
+        // 3. Girilen şifre ile veritabanındaki hash'i karşılaştır
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new AuthException("Kullanıcı adı/email veya şifre hatalı");
+        }
+
+        // 4. Doğruysa token üret ve dön
         String token = jwtUtil.generateToken(user.getEmail());
         return new AuthResponse(token, user.getEmail(), user.getUsername());
     }
