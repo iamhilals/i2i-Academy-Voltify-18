@@ -11,6 +11,7 @@ import com.voltify.core.entity.BillingLedger;
 import com.voltify.core.entity.ConsumptionSnapshot;
 import com.voltify.core.entity.Home;
 import com.voltify.core.entity.User;
+import com.voltify.core.exception.ForbiddenException;
 import com.voltify.core.repository.BillingLedgerRepository;
 import com.voltify.core.repository.HomeRepository;
 import com.voltify.core.repository.ConsumptionSnapshotRepository;
@@ -72,17 +73,34 @@ public class HomeService {
     // Şartname: Home Status Delivery - Ignite'tan okumalı ama Ignite henüz yok
     // Şimdilik PostgreSQL'den okuyoruz, Ignite eklenince buradan geçireceğiz
     public Home getHomeStatus(Long homeId) {
-        return homeRepository.findById(homeId)
+        Home home = homeRepository.findById(homeId)
             .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+        assertOwnership(home);
+        return home;
     }
 
     // Şartname: Historical Trend Delivery - PostgreSQL'den
     public List<ConsumptionSnapshot> getHomeHistory(Long homeId) {
+        Home home = homeRepository.findById(homeId)
+            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+        assertOwnership(home);
         return consumptionSnapshotRepository.findByHomeIdOrderBySnapshotDateAsc(homeId);
     }
 
     // Frontend dashboard grid için - tüm evleri listeler
     public List<Home> getAllHomes() {
         return homeRepository.findAll();
+    }
+
+        private User getCurrentUser() {
+        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
+
+    // Bu evin, isteği yapan kullanıcıya ait olup olmadığını kontrol eder
+    private void assertOwnership(Home home) {
+        User currentUser = getCurrentUser();
+        if (!home.getOwner().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Bu eve erişim yetkiniz yok");
+        }
     }
 }

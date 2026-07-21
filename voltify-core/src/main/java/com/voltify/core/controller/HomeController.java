@@ -36,11 +36,6 @@ public class HomeController {
         return ResponseEntity.ok(homes);
     }
 
-    @GetMapping("/all")
-    public ResponseEntity<List<Home>> getAllHomes() {
-        return ResponseEntity.ok(homeService.getAllHomes());
-    }
-
     @GetMapping("/status/{homeId}")
     public ResponseEntity<Home> getHomeStatus(@PathVariable Long homeId) {
         return ResponseEntity.ok(homeService.getHomeStatus(homeId));
