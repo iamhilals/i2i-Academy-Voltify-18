@@ -79,6 +79,12 @@ public class TelemetryConsumerService {
                 System.out.println("🔥 ANOMALY: " + appliance.getName()
                         + " (id=" + applianceId + ") - 3 consecutive breaches");
                 alertNotificationService.notifyApplianceAnomaly(appliance.getHome(), appliance.getName(), watt, safeLimit);
+
+                // Sayacı çok büyük bir sayıya çıkar ki tekrar 3'e ulaşamasın.
+                // Cihaz normale döner de sayaç sıfırlanırsa (else bloğunda), tekrar 3'e ulaşabilir - bu zaten yeni bir olaydır.
+                for (int i = 0; i < 1000; i++) {
+                    igniteService.incrementBreachCounter(applianceId);
+                }
             }
         } else {
             // Normal aralığa döndü - sayaç sıfırla (varsa)

@@ -6,8 +6,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.voltify.core.dto.HomeUpdateRequest;
+import com.voltify.core.entity.Appliance;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.voltify.core.dto.HomeStatusResponse;
+import com.voltify.core.dto.HomeUpdateRequest;
+import com.voltify.core.entity.Appliance;
 import com.voltify.core.entity.BillingLedger;
 import com.voltify.core.entity.ConsumptionSnapshot;
 import com.voltify.core.entity.Home;
@@ -120,6 +124,58 @@ public class HomeService {
     // Yardımcı: SecurityContextHolder'dan şu an giriş yapmış kullanıcıyı al
     private User getCurrentUser() {
         return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
+
+    // Ev bilgilerini kısmi olarak günceller (sadece null olmayan alanlar).
+    @Transactional
+    public Home updateHome(Long homeId, HomeUpdateRequest request) {
+        Home home = homeRepository.findById(homeId)
+            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+        assertOwnership(home);
+
+        if (request.getName() != null) home.setName(request.getName());
+        if (request.getContactEmail() != null) home.setContactEmail(request.getContactEmail());
+        if (request.getPowerQuotaWatt() != null) home.setPowerQuotaWatt(request.getPowerQuotaWatt());
+        if (request.getBudgetQuotaTry() != null) home.setBudgetQuotaTry(request.getBudgetQuotaTry());
+        if (request.getBaseRate() != null) home.setBaseRate(request.getBaseRate());
+        if (request.getPenaltyRate() != null) home.setPenaltyRate(request.getPenaltyRate());
+
+        return homeRepository.save(home);
+    }
+
+    // Evi siler (cascade sayesinde cihazlar ve billing ledger da silinir)
+    @Transactional
+    public void deleteHome(Long homeId) {
+        Home home = homeRepository.findById(homeId)
+            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+        assertOwnership(home);
+        homeRepository.delete(home);
+    }
+
+    // Mevcut bir eve yeni cihaz ekler
+    @Transactional
+    public Home addAppliance(Long homeId, Appliance appliance) {
+        Home home = homeRepository.findById(homeId)
+            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+        assertOwnership(home);
+
+        appliance.setHome(home);
+        home.getAppliances().add(appliance);
+        return homeRepository.save(home);
+    }
+
+    // Bir eve ait cihazı siler
+    @Transactional
+    public void deleteAppliance(Long homeId, Long applianceId) {
+        Home home = homeRepository.findById(homeId)
+            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+        assertOwnership(home);
+
+        boolean removed = home.getAppliances().removeIf(a -> a.getId().equals(applianceId));
+        if (!removed) {
+            throw new RuntimeException("Appliance not found in this home: " + applianceId);
+        }
+        homeRepository.save(home);
     }
 
     // Yardımcı: Bu evin, isteği yapan kullanıcıya ait olup olmadığını kontrol eder

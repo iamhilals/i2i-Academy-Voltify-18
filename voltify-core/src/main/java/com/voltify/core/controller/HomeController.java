@@ -3,14 +3,18 @@ package com.voltify.core.controller;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.voltify.core.dto.HomeStatusResponse;
+import com.voltify.core.dto.HomeUpdateRequest;
+import com.voltify.core.entity.Appliance;
 import com.voltify.core.entity.ConsumptionSnapshot;
 import com.voltify.core.entity.Home;
 import com.voltify.core.service.HomeService;
@@ -45,5 +49,27 @@ public class HomeController {
     @GetMapping("/history/{homeId}")
     public ResponseEntity<List<ConsumptionSnapshot>> getHomeHistory(@PathVariable Long homeId) {
         return ResponseEntity.ok(homeService.getHomeHistory(homeId));
+    }
+
+    @PutMapping("/{homeId}")
+    public ResponseEntity<Home> updateHome(@PathVariable Long homeId, @RequestBody HomeUpdateRequest request) {
+        return ResponseEntity.ok(homeService.updateHome(homeId, request));
+    }
+
+    @DeleteMapping("/{homeId}")
+    public ResponseEntity<Void> deleteHome(@PathVariable Long homeId) {
+        homeService.deleteHome(homeId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{homeId}/appliances")
+    public ResponseEntity<Home> addAppliance(@PathVariable Long homeId, @RequestBody Appliance appliance) {
+        return ResponseEntity.ok(homeService.addAppliance(homeId, appliance));
+    }
+
+    @DeleteMapping("/{homeId}/appliances/{applianceId}")
+    public ResponseEntity<Void> deleteAppliance(@PathVariable Long homeId, @PathVariable Long applianceId) {
+        homeService.deleteAppliance(homeId, applianceId);
+        return ResponseEntity.noContent().build();
     }
 }

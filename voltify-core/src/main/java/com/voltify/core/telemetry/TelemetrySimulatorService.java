@@ -13,9 +13,8 @@ import com.voltify.core.entity.Appliance;
 import com.voltify.core.entity.Home;
 import com.voltify.core.repository.HomeRepository;
 
-// Otonom simülasyon motoru: kayıtlı her ev için, her cihaz için
-// periyodik olarak sahte watt verisi üretip Kafka'ya basar.
-// Dokümandaki "Telemetry Data Generation" gereksinimi.
+// Otonom simülasyon: kayıtlı her ev için, her cihaz için sahte watt üretip Kafka'ya basar.
+// Dokümandaki "Telemetry Data Generation" gereksinimini karşılar.
 @Service
 public class TelemetrySimulatorService {
 
@@ -30,20 +29,26 @@ public class TelemetrySimulatorService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Random random = new Random();
 
-    // Her 5 saniyede bir çalışır. fixedRate = milisaniye cinsinden.
-    @Scheduled(fixedRate = 1000)
+    // Her 2 saniyede bir çalışır ("every few seconds" gereksinimi)
+    @Scheduled(fixedRate = 2000)
     public void generateTelemetry() {
-        // PostgreSQL'den tüm kayıtlı evleri çek
         List<Home> homes = homeRepository.findAll();
 
         for (Home home : homes) {
             if (home.getAppliances() == null) continue;
 
             for (Appliance appliance : home.getAppliances()) {
-                // Cihazın güvenli limitinin %50-%150'i arasında rastgele bir watt üret
-                // Böylece bazen normal, bazen limitin üstünde değerler oluşacak - anomali tespitini tetikler
                 double safeLimit = appliance.getSafePowerLimit();
-                double randomWatt = safeLimit * (0.5 + random.nextDouble());
+                double randomWatt;
+
+                // Gerçekçi dağılım: %90 sağlıklı çalışma, %10 anormal tüketim
+                if (random.nextDouble() < 0.9) {
+                    // Sağlıklı: safe limit'in %60-95'i arası
+                    randomWatt = safeLimit * (0.6 + random.nextDouble() * 0.35);
+                } else {
+                    // Anormal: safe limit'in %105-130'u arası
+                    randomWatt = safeLimit * (1.05 + random.nextDouble() * 0.25);
+                }
 
                 TelemetryEvent event = new TelemetryEvent();
                 event.setHomeId(home.getId());
