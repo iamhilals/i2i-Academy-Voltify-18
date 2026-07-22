@@ -34,3 +34,6 @@ build/
 
 # Ignite runtime data
 /ignite/
+
+# Kişisel config
+src/main/resources/application-local.properties

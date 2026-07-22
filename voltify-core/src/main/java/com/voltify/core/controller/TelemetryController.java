@@ -21,7 +21,7 @@ public class TelemetryController {
     // @Autowired KALDIRILDI! Spring'den istemek yerine doğrudan kendimiz oluşturuyoruz.
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final String TOPIC = "telemetry-topic"; 
+    private static final String TOPIC = "appliance-telemetry-topic";
 
     @PostMapping("/send")
     public ResponseEntity<String> sendTelemetry(@RequestBody TelemetryEvent event) {

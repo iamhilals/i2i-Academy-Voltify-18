@@ -31,15 +31,18 @@ public class TariffEngineService {
     private final BillingLedgerRepository billingLedgerRepository;
     private final EventLogRepository eventLogRepository;
     private final IgniteService igniteService;
+    private final AlertNotificationService alertNotificationService;
 
     public TariffEngineService(HomeRepository homeRepository,
                                 BillingLedgerRepository billingLedgerRepository,
                                 EventLogRepository eventLogRepository,
-                                IgniteService igniteService) {
+                                IgniteService igniteService,
+                                AlertNotificationService alertNotificationService) {
         this.homeRepository = homeRepository;
         this.billingLedgerRepository = billingLedgerRepository;
         this.eventLogRepository = eventLogRepository;
         this.igniteService = igniteService;
+        this.alertNotificationService = alertNotificationService;
     }
 
     // Bir telemetry event'i işle: accumulated watt ve balance güncelle,
@@ -91,6 +94,7 @@ public class TariffEngineService {
             logEvent(home, EventLog.EventType.BREACH_80,
                     String.format("{\"wattRatio\":%.3f,\"budgetRatio\":%.3f}", wattUsageRatio, budgetUsageRatio));
             System.out.println("⚠️  Home " + homeId + " reached 80% quota");
+            alertNotificationService.notifyQuotaBreach(home, "BREACH_80");
         }
 
         // 7) %100 breach + penalty geçişi
@@ -104,6 +108,7 @@ public class TariffEngineService {
             logEvent(home, EventLog.EventType.PENALTY_ACTIVATED,
                     String.format("{\"newRate\":%.2f}", home.getPenaltyRate()));
             System.out.println("🚨 Home " + homeId + " reached 100% quota - PENALTY ACTIVATED");
+            alertNotificationService.notifyQuotaBreach(home, "BREACH_100");
         }
 
         billingLedgerRepository.save(ledger);

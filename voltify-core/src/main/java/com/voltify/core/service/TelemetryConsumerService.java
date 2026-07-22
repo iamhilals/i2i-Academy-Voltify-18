@@ -22,15 +22,18 @@ public class TelemetryConsumerService {
     private final IgniteService igniteService;
     private final ApplianceRepository applianceRepository;
     private final EventLogRepository eventLogRepository;
+    private final AlertNotificationService alertNotificationService;
 
     public TelemetryConsumerService(TariffEngineService tariffEngineService,
                                      IgniteService igniteService,
                                      ApplianceRepository applianceRepository,
-                                     EventLogRepository eventLogRepository) {
+                                     EventLogRepository eventLogRepository,
+                                     AlertNotificationService alertNotificationService) {
         this.tariffEngineService = tariffEngineService;
         this.igniteService = igniteService;
         this.applianceRepository = applianceRepository;
         this.eventLogRepository = eventLogRepository;
+        this.alertNotificationService = alertNotificationService;
     }
 
     @KafkaListener(topics = "appliance-telemetry-topic", groupId = "voltify-telemetry-group")
@@ -73,6 +76,7 @@ public class TelemetryConsumerService {
                 eventLogRepository.save(log);
                 System.out.println("🔥 ANOMALY: " + appliance.getName()
                         + " (id=" + applianceId + ") - 3 consecutive breaches");
+                alertNotificationService.notifyApplianceAnomaly(appliance.getHome(), appliance.getName(), watt, safeLimit);
             }
         } else {
             // Normal aralığa döndü - sayaç sıfırla (varsa)
