@@ -1,4 +1,4 @@
-package com.voltify.core.dto;
+package com.voltify.core.telemetry;
 
 // Kafka'dan gelen telemetry mesajının şeması
 // Her mesaj tek bir cihazın anlık watt ölçümünü taşır

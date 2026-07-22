@@ -1,4 +1,4 @@
-package com.voltify.core.service;
+package com.voltify.core.telemetry;
 
 import java.util.Optional;
 
@@ -6,11 +6,13 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.voltify.core.dto.TelemetryEvent;
 import com.voltify.core.entity.Appliance;
 import com.voltify.core.entity.EventLog;
 import com.voltify.core.repository.ApplianceRepository;
 import com.voltify.core.repository.EventLogRepository;
+import com.voltify.core.service.AlertNotificationService;
+import com.voltify.core.service.IgniteService;
+import com.voltify.core.service.TariffEngineService;
 
 @Service
 public class TelemetryConsumerService {

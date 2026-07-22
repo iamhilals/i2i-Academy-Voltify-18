@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.voltify.core.dto.HomeStatusResponse;
 import com.voltify.core.entity.ConsumptionSnapshot;
 import com.voltify.core.entity.Home;
 import com.voltify.core.service.HomeService;
@@ -37,7 +38,7 @@ public class HomeController {
     }
 
     @GetMapping("/status/{homeId}")
-    public ResponseEntity<Home> getHomeStatus(@PathVariable Long homeId) {
+    public ResponseEntity<HomeStatusResponse> getHomeStatus(@PathVariable Long homeId) {
         return ResponseEntity.ok(homeService.getHomeStatus(homeId));
     }
 

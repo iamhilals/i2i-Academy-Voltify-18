@@ -7,40 +7,48 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.voltify.core.dto.HomeStatusResponse;
 import com.voltify.core.entity.BillingLedger;
 import com.voltify.core.entity.ConsumptionSnapshot;
 import com.voltify.core.entity.Home;
 import com.voltify.core.entity.User;
 import com.voltify.core.exception.ForbiddenException;
+import com.voltify.core.ignite.HomeLiveState;
 import com.voltify.core.repository.BillingLedgerRepository;
-import com.voltify.core.repository.HomeRepository;
 import com.voltify.core.repository.ConsumptionSnapshotRepository;
+import com.voltify.core.repository.HomeRepository;
 
 @Service
 public class HomeService {
 
     private final HomeRepository homeRepository;
     private final BillingLedgerRepository billingLedgerRepository;
-    private final KafkaProducerService kafkaProducerService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     private final ConsumptionSnapshotRepository consumptionSnapshotRepository;
+    private final KafkaProducerService kafkaProducerService;
+    private final IgniteService igniteService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public HomeService(HomeRepository homeRepository,
                     BillingLedgerRepository billingLedgerRepository,
                     ConsumptionSnapshotRepository consumptionSnapshotRepository,
-                    KafkaProducerService kafkaProducerService) {
+                    KafkaProducerService kafkaProducerService,
+                    IgniteService igniteService) {
         this.homeRepository = homeRepository;
         this.billingLedgerRepository = billingLedgerRepository;
         this.consumptionSnapshotRepository = consumptionSnapshotRepository;
         this.kafkaProducerService = kafkaProducerService;
+        this.igniteService = igniteService;
     }
 
+    // Şartname: Home Registration - Yeni ev + cihazlar PostgreSQL'e kaydedilir,
+    // aynı anda Kafka'ya "yeni ev eklendi" mesajı basılır (Telemetry Sensors için)
     @Transactional
     public Home registerHome(Home home) {
-        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        // Şu an giriş yapmış kullanıcıyı bul ve evin sahibi (owner) yap
+        User currentUser = getCurrentUser();
         home.setOwner(currentUser);
 
+        // Cihazların hangi eve ait olduğunu belirt (çift yönlü ilişki)
         if (home.getAppliances() != null) {
             home.getAppliances().forEach(appliance -> appliance.setHome(home));
         }
@@ -48,13 +56,14 @@ public class HomeService {
         // Ev PostgreSQL'e kaydediliyor
         Home savedHome = homeRepository.save(home);
 
-        // Her yeni ev için otomatik olarak boş bir BillingLedger oluşturuluyor
+        // Her yeni ev için otomatik olarak boş bir BillingLedger (fatura defteri) oluşturuluyor
         BillingLedger ledger = new BillingLedger();
         ledger.setHome(savedHome);
         BillingLedger savedLedger = billingLedgerRepository.save(ledger);
         savedHome.setBillingLedger(savedLedger);
 
         // Kafka'ya asset registration event'i gönderiliyor
+        // Telemetry Sensors bu mesajı yakalayıp yeni evi simülasyon listesine ekleyecek
         try {
             String homeJson = objectMapper.writeValueAsString(savedHome);
             kafkaProducerService.sendMessage("home-registration-topic", homeJson);
@@ -65,21 +74,42 @@ public class HomeService {
         return savedHome;
     }
 
+    // Giriş yapmış kullanıcının kendine ait evlerini listeler
     public List<Home> getMyHomes() {
-        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return homeRepository.findByOwner(currentUser);
+        return homeRepository.findByOwner(getCurrentUser());
     }
 
-    // Şartname: Home Status Delivery - Ignite'tan okumalı ama Ignite henüz yok
-    // Şimdilik PostgreSQL'den okuyoruz, Ignite eklenince buradan geçireceğiz
-    public Home getHomeStatus(Long homeId) {
+    // Şartname: Home Status Delivery - Statik bilgiler PostgreSQL'den,
+    // anlık/canlı bilgiler (tüketim, bakiye, ceza durumu) Ignite'tan okunur
+    public HomeStatusResponse getHomeStatus(Long homeId) {
+        // Önce evi PostgreSQL'de bul ve sahibi olduğumuzu doğrula
         Home home = homeRepository.findById(homeId)
             .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
         assertOwnership(home);
-        return home;
+
+        // Statik/kalıcı bilgileri PostgreSQL'den (Home entity'sinden) doldur
+        HomeStatusResponse response = new HomeStatusResponse();
+        response.setId(home.getId());
+        response.setName(home.getName());
+        response.setContactEmail(home.getContactEmail());
+        response.setPowerQuotaWatt(home.getPowerQuotaWatt());
+        response.setBudgetQuotaTry(home.getBudgetQuotaTry());
+        response.setBaseRate(home.getBaseRate());
+        response.setPenaltyRate(home.getPenaltyRate());
+        response.setAppliances(home.getAppliances());
+
+        // Anlık/canlı bilgileri Ignite'tan (sub-millisecond okuma) doldur
+        HomeLiveState liveState = igniteService.getOrCreateHomeState(homeId);
+        response.setAccumulatedWatt(liveState.getAccumulatedWatt());
+        response.setCurrentBalance(liveState.getCurrentBalance());
+        response.setIsPenaltyActive(liveState.getIsPenaltyActive());
+        response.setLastUpdatedMillis(liveState.getLastUpdatedMillis());
+
+        return response;
     }
 
-    // Şartname: Historical Trend Delivery - PostgreSQL'den
+    // Şartname: Historical Trend Delivery - Geçmiş tüketim grafikleri için
+    // PostgreSQL'deki günlük anlık görüntüleri (snapshot) döndürür
     public List<ConsumptionSnapshot> getHomeHistory(Long homeId) {
         Home home = homeRepository.findById(homeId)
             .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
@@ -87,16 +117,13 @@ public class HomeService {
         return consumptionSnapshotRepository.findByHomeIdOrderBySnapshotDateAsc(homeId);
     }
 
-    // Frontend dashboard grid için - tüm evleri listeler
-    public List<Home> getAllHomes() {
-        return homeRepository.findAll();
-    }
-
-        private User getCurrentUser() {
+    // Yardımcı: SecurityContextHolder'dan şu an giriş yapmış kullanıcıyı al
+    private User getCurrentUser() {
         return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
-    // Bu evin, isteği yapan kullanıcıya ait olup olmadığını kontrol eder
+    // Yardımcı: Bu evin, isteği yapan kullanıcıya ait olup olmadığını kontrol eder
+    // Değilse ForbiddenException fırlatır (GlobalExceptionHandler bunu 403'e çevirir)
     private void assertOwnership(Home home) {
         User currentUser = getCurrentUser();
         if (!home.getOwner().getId().equals(currentUser.getId())) {
