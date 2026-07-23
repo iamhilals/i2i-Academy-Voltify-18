@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Filter, Plus, Zap, Home as HomeIcon, PiggyBank, AlertTriangle } from 'lucide-react';
 import AddHomeSlideover from '../components/AddHomeSlideover';
+import { homeService } from '../services/homeService';
 
 const mockHomes = [
   {
@@ -50,6 +51,32 @@ const mockHomes = [
 const HomeDashboard = () => {
   const navigate = useNavigate();
   const [isAddHomeOpen, setIsAddHomeOpen] = useState(false);
+  const [homes, setHomes] = useState(mockHomes);
+
+  useEffect(() => {
+    async function loadHomes() {
+      try {
+        const backendHomes = await homeService.getMyHomes();
+        if (Array.isArray(backendHomes) && backendHomes.length > 0) {
+          const formatted = backendHomes.map((h, idx) => ({
+            id: h.id,
+            name: h.name || `Ev ${h.id}`,
+            consumption: `${h.currentConsumptionKw || (h.appliances ? h.appliances.length * 0.5 : 1.2)} kW`,
+            status: h.status || 'Aktif',
+            health: 'MÜKEMMEL',
+            healthScore: 5,
+            image: mockHomes[idx % mockHomes.length].image,
+            isCritical: false,
+          }));
+          setHomes(formatted);
+        }
+      } catch (err) {
+        console.warn('Backend server unreachable or unauthenticated, using mock homes data:', err);
+      }
+    }
+    loadHomes();
+  }, []);
+
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -111,7 +138,7 @@ const HomeDashboard = () => {
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {mockHomes.map((home) => (
+        {homes.map((home) => (
           <div 
             key={home.id} 
             onClick={() => navigate(`/dashboard/home/${home.id}`)}

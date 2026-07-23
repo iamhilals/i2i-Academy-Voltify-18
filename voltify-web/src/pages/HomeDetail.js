@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Activity, AlertTriangle, TrendingUp, DollarSign, TurkishLira, PieChart as PieChartIcon, Zap } from 'lucide-react';
 import { 
@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import DeviceDetailModal from '../components/DeviceDetailModal';
 import AddDeviceSlideover from '../components/AddDeviceSlideover';
+import { homeService } from '../services/homeService';
 
 // Dummy historical data for the chart
 const dailyTrendData = [
@@ -53,11 +54,33 @@ const HomeDetail = () => {
   const navigate = useNavigate();
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
+  const [homeState, setHomeState] = useState(null);
 
-  // In a real app, we would fetch home data by ID here. 
-  // For now, we'll use mockHomeData but simulate critical state if ID == 2
+  useEffect(() => {
+    async function fetchDetails() {
+      try {
+        const statusData = await homeService.getHomeStatus(id);
+        if (statusData) {
+          setHomeState({
+            id: statusData.homeId || parseInt(id),
+            name: statusData.homeName || `Ev ${id}`,
+            consumption: `${statusData.totalConsumptionKw || 1.2} kW`,
+            status: statusData.status || 'Optimal',
+            isCritical: statusData.status === 'KRİTİK',
+            image: mockHomeData.image,
+          });
+        }
+      } catch (err) {
+        console.warn('Could not fetch home status from backend, using fallback:', err);
+      }
+    }
+    if (id) {
+      fetchDetails();
+    }
+  }, [id]);
+
   const isCritical = id === '2';
-  const home = { ...mockHomeData, isCritical, name: isCritical ? 'Crimson Lodge' : 'Villa i2i' };
+  const home = homeState || { ...mockHomeData, id: parseInt(id) || 1, isCritical, name: isCritical ? 'Crimson Lodge' : 'Villa i2i' };
 
   return (
     <div className="w-full flex flex-col animate-in fade-in zoom-in-95 duration-300">

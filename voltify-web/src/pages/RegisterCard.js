@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { authService } from '../services/authService';
 
 // Profil avatarları — kadın, erkek, nötr, robot
 const AVATARS = [
@@ -43,25 +45,24 @@ const AVATARS = [
         <path d="M15 14 Q15 7 24 7 Q33 7 33 14 Q31 9 24 9 Q17 9 15 14Z"
           fill={active ? '#5B21B6' : (isDark ? '#4C1D95' : '#5B21B6')} />
         <path d="M14 24 Q10 30 10 38 L38 38 Q38 30 34 24 Q30 28 24 28 Q18 28 14 24Z"
-          fill={active ? '#8B5CF6' : (isDark ? '#4C1D95' : '#8B5CF6')} opacity="0.9" />
+          fill={active ? '#8B5CF6' : (isDark ? '#3B0764' : '#8B5CF6')} opacity="0.9" />
         <path d="M16 20 Q18 25 24 26 Q30 25 32 20" fill="#FDDCB5" stroke="#E0B090" strokeWidth="0.5" />
       </svg>
     ),
   },
   {
-    id: 'robot',
+    id: 'bot',
     label: 'Robot',
     render: (active, isDark) => (
       <svg viewBox="0 0 48 48" className="w-8 h-8">
-        <circle cx="24" cy="48" r="20" fill={active ? '#F59E0B' : (isDark ? '#2D3748' : '#FEF3C7')} />
-        <rect x="14" y="10" width="20" height="18" rx="4" fill={active ? '#6B7280' : (isDark ? '#4B5563' : '#9CA3AF')} />
-        <rect x="17" y="14" width="5" height="5" rx="1" fill={active ? '#60A5FA' : '#93C5FD'} />
-        <rect x="26" y="14" width="5" height="5" rx="1" fill={active ? '#60A5FA' : '#93C5FD'} />
-        <rect x="19" y="22" width="10" height="2" rx="1" fill={active ? '#D1FAE5' : '#A7F3D0'} />
-        <rect x="22" y="6" width="4" height="5" rx="1" fill={active ? '#6B7280' : (isDark ? '#4B5563' : '#9CA3AF')} />
-        <circle cx="24" cy="6" r="2" fill={active ? '#F59E0B' : '#FCD34D'} />
-        <path d="M14 28 Q10 32 10 38 L38 38 Q38 32 34 28 Q30 31 24 31 Q18 31 14 28Z"
-          fill={active ? '#F59E0B' : (isDark ? '#92400E' : '#F59E0B')} opacity="0.9" />
+        <circle cx="24" cy="48" r="20" fill={active ? '#10B981' : (isDark ? '#2D3748' : '#ECFDF5')} />
+        <rect x="15" y="10" width="18" height="14" rx="3" fill={active ? '#374151' : (isDark ? '#4B5563' : '#6B7280')} />
+        <circle cx="20" cy="17" r="3" fill="#10B981" />
+        <circle cx="28" cy="17" r="3" fill="#10B981" />
+        <line x1="24" y1="5" x2="24" y2="10" stroke={active ? '#10B981' : '#6B7280'} strokeWidth="2" />
+        <circle cx="24" cy="4" r="2" fill="#10B981" />
+        <path d="M14 24 Q10 30 10 38 L38 38 Q38 30 34 24 Q30 28 24 28 Q18 28 14 24Z"
+          fill={active ? '#10B981' : (isDark ? '#064E3B' : '#10B981')} opacity="0.9" />
       </svg>
     ),
   },
@@ -71,7 +72,6 @@ function getPasswordStrength(password) {
   if (!password) return { score: 0, label: '', color: '' };
   let score = 0;
   if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
   if (/[A-Z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
@@ -111,6 +111,7 @@ function RegField({ label, type, value, onChange, placeholder, isDark, icon }) {
 }
 
 export default function RegisterCard({ isDark, onGoLogin }) {
+  const navigate = useNavigate();
   const [selectedAvatar, setSelectedAvatar] = useState('woman');
   const [photoPreview, setPhotoPreview] = useState(null);
   const [firstName, setFirstName] = useState('');
@@ -120,6 +121,7 @@ export default function RegisterCard({ isDark, onGoLogin }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
   const passwordStrength = getPasswordStrength(password);
@@ -132,19 +134,31 @@ export default function RegisterCard({ isDark, onGoLogin }) {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!firstName || !lastName || !email || !phone || !password) {
-      setError('Lütfen tüm alanları doldurun.');
+
+    if (!firstName || !lastName || !email || !password) {
+      setError('Lütfen zorunlu alanları doldurun.');
       return;
     }
     if (password.length < 8) {
       setError('Şifre en az 8 karakter olmalıdır.');
       return;
     }
-    console.log('Register:', { firstName, lastName, email, phone, password, avatar: selectedAvatar, photo: !!photoPreview });
-    onGoLogin();
+
+    const username = (firstName + lastName).replace(/\s+/g, '').toLowerCase() || email.split('@')[0];
+
+    setLoading(true);
+    try {
+      await authService.register(username, email, password);
+      setLoading(false);
+      navigate('/dashboard');
+    } catch (err) {
+      setLoading(false);
+      const errMsg = err.response?.data?.message || err.message || 'Kayıt olunamadı. Lütfen bilgilerinizi kontrol edin.';
+      setError(errMsg);
+    }
   };
 
   return (

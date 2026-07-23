@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { authService } from '../services/authService';
 
 function Lock3D({ isUnlocking, isDark }) {
   return (
@@ -78,19 +80,34 @@ function FormField({ label, type, value, onChange, placeholder, isDark, icon }) 
 }
 
 export default function LoginCard({ isDark, onGoRegister }) {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isUnlocking, setIsUnlocking] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!username || !password) {
+      setError('Lütfen kullanıcı adı ve şifrenizi girin.');
+      return;
+    }
+
     setIsUnlocking(true);
-    setTimeout(() => {
-      console.log('Login denemesi:', { username, password });
+
+    try {
+      await authService.login(username, password);
+      setTimeout(() => {
+        setIsUnlocking(false);
+        navigate('/dashboard');
+      }, 1000);
+    } catch (err) {
       setIsUnlocking(false);
-    }, 2500);
+      const errMsg = err.response?.data?.message || err.message || 'Giriş yapılamadı. Kullanıcı adı veya şifre hatalı.';
+      setError(errMsg);
+    }
   };
 
   return (

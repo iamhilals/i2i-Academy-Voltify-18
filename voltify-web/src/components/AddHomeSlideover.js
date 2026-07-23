@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Home, Building2, Briefcase, Plus, MapPin, Maximize, Zap, Sparkles } from 'lucide-react';
+import { homeService } from '../services/homeService';
 
 const AddHomeSlideover = ({ isOpen, onClose }) => {
   const [homeName, setHomeName] = useState('');
@@ -7,6 +8,7 @@ const AddHomeSlideover = ({ isOpen, onClose }) => {
   const [homeType, setHomeType] = useState('apartment'); // 'house', 'apartment', 'office'
   const [squareMeters, setSquareMeters] = useState('');
   const [hasSmartInfra, setHasSmartInfra] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Calculate AI prediction based on square meters and type
   const calculateEstimate = () => {
@@ -25,17 +27,28 @@ const AddHomeSlideover = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulate API call for adding a home
-    console.log("Adding new home:", { homeName, address, homeType, squareMeters, hasSmartInfra });
-    onClose();
-    // Reset form
-    setHomeName('');
-    setAddress('');
-    setHomeType('apartment');
-    setSquareMeters('');
-    setHasSmartInfra(false);
+    setIsSubmitting(true);
+    try {
+      await homeService.registerHome({
+        name: homeName,
+        address: address,
+        squareMeters: parseInt(squareMeters) || 100,
+        type: homeType,
+      });
+    } catch (err) {
+      console.warn('Could not register home to backend:', err);
+    } finally {
+      setIsSubmitting(false);
+      onClose();
+      // Reset form
+      setHomeName('');
+      setAddress('');
+      setHomeType('apartment');
+      setSquareMeters('');
+      setHasSmartInfra(false);
+    }
   };
 
   return (
