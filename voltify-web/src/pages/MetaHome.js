@@ -1,12 +1,26 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Sky, OrbitControls, Html, useKeyboardControls, KeyboardControls } from '@react-three/drei';
+import { Sky, OrbitControls, Html, useKeyboardControls, KeyboardControls, useGLTF, Center, Bounds } from '@react-three/drei';
 import * as THREE from 'three';
 import { ArrowLeft, Zap, Power } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
+// GLB Model Loader Component
+const GlbModel = ({ url, scale = 1.5 }) => {
+  const { scene } = useGLTF(url);
+  // Clone scene so we can use it multiple times if needed without conflict
+  const clonedScene = React.useMemo(() => scene.clone(), [scene]);
+  return (
+    <Suspense fallback={null}>
+      <Center>
+        <primitive object={clonedScene} scale={[scale, scale, scale]} />
+      </Center>
+    </Suspense>
+  );
+};
+
 // Device Component
-const InteractiveDevice = ({ position, name, status, wattage, color, playerRef }) => {
+const InteractiveDevice = ({ position, name, status, wattage, color, playerRef, modelUrl, rotationY = 0, scale = 1 }) => {
   const meshRef = useRef();
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -22,16 +36,20 @@ const InteractiveDevice = ({ position, name, status, wattage, color, playerRef }
         setShowTooltip(false);
       }
       
-      // Gentle floating animation
-      meshRef.current.position.y = position[1] + Math.sin(Date.now() / 500) * 0.1;
-      meshRef.current.rotation.y += 0.01;
+      // No rotation or floating - completely static
     }
   });
 
   return (
-    <mesh position={position} ref={meshRef}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
+    <mesh position={position} ref={meshRef} rotation={[0, rotationY, 0]}>
+      {modelUrl ? (
+        <GlbModel url={modelUrl} scale={scale} />
+      ) : (
+        <>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
+        </>
+      )}
       
       {showTooltip && (
         <Html position={[0, 1.5, 0]} center>
@@ -55,6 +73,26 @@ const InteractiveDevice = ({ position, name, status, wattage, color, playerRef }
   );
 };
 
+// Camera Controller to follow player but allow 360 mouse rotation
+const CameraController = ({ playerRef }) => {
+  const controlsRef = useRef();
+  useFrame(() => {
+    if (controlsRef.current && playerRef.current) {
+      controlsRef.current.target.lerp(playerRef.current.position, 0.1);
+      controlsRef.current.update();
+    }
+  });
+  return (
+    <OrbitControls 
+      ref={controlsRef} 
+      makeDefault 
+      minDistance={5}
+      maxDistance={30}
+      maxPolarAngle={Math.PI / 2 - 0.05} // Prevent camera from going under the floor
+    />
+  );
+};
+
 // Player Component
 const Player = ({ playerRef }) => {
   const [_, get] = useKeyboardControls();
@@ -73,13 +111,8 @@ const Player = ({ playerRef }) => {
 
     velocity.normalize().multiplyScalar(speed * delta);
     playerRef.current.position.add(velocity);
-
-    // Keep camera following the player smoothly
-    state.camera.position.lerp(
-      new THREE.Vector3(playerRef.current.position.x, playerRef.current.position.y + 10, playerRef.current.position.z + 10),
-      0.1
-    );
-    state.camera.lookAt(playerRef.current.position);
+    
+    // We removed manual camera lerping here to let OrbitControls handle 360 rotation
   });
 
   return (
@@ -161,6 +194,7 @@ const MetaHome = () => {
       {/* 3D Canvas */}
       <KeyboardControls map={keyboardMap}>
         <Canvas shadows camera={{ position: [0, 10, 10], fov: 50 }}>
+          <CameraController playerRef={playerRef} />
           <Sky sunPosition={[100, 20, 100]} turbidity={0.1} rayleigh={0.5} />
           <ambientLight intensity={0.5} />
           <directionalLight castShadow position={[10, 20, 10]} intensity={1.5} shadow-mapSize={[1024, 1024]} />
@@ -195,6 +229,10 @@ const MetaHome = () => {
           {/* Dynamic Devices based on specific Home data */}
           {devices.map((device, index) => {
             const pos = devicePositions[index % devicePositions.length];
+            
+            // Check if device is a Washing Machine to assign our model
+            const isWasher = device.name.toLowerCase().includes('çamaşır') || device.name.toLowerCase().includes('washer');
+            
             return (
               <InteractiveDevice 
                 key={device.id}
@@ -203,7 +241,10 @@ const MetaHome = () => {
                 name={device.name} 
                 status={device.isAnomalous ? "Hata" : "Açık"} 
                 wattage={`${device.currentWattage}W`} 
-                color={getDeviceColor(device.type)} 
+                color={getDeviceColor(device.type)}
+                modelUrl={isWasher ? '/washer.glb' : null}
+                rotationY={isWasher ? 0 : 0} // 0 means default rotation, exact opposite of Math.PI
+                scale={isWasher ? 1.5 : 1}
               />
             );
           })}
