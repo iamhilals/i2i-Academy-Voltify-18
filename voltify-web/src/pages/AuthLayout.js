@@ -282,22 +282,11 @@ export default function AuthLayout({ mode }) {
         ))}
       </div>
 
-      {/* DARK MODE TOGGLE */}
-      <motion.button onClick={() => setIsDark(!isDark)}
-        whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
-        className="absolute top-4 right-4 z-30 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/30 backdrop-blur-md shadow-lg flex items-center justify-center">
-        <motion.div animate={{ rotate: isDark ? 180 : 0 }} transition={{ duration: 0.5 }}>
-          {isDark ? (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FFEB99" className="w-6 h-6">
-              <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4A5568" className="w-6 h-6">
-              <path fillRule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clipRule="evenodd" />
-            </svg>
-          )}
-        </motion.div>
-      </motion.button>
+      {/* UÇAN RENKLİ KELEBEKLER (FLYING BUTTERFLIES) */}
+      <AnimatedButterflies />
+
+      {/* PULL CHAIN NIGHT LAMP (GECE LAMBASI İPLİ TOGGLE) */}
+      <PullChainLamp isDark={isDark} onToggle={() => setIsDark(!isDark)} />
 
       {/* KART GEÇİŞİ — arka plan değişmez, sadece kart kayar */}
       <AnimatePresence mode="wait">
@@ -474,5 +463,206 @@ function Cat({ startX, direction, baseY, speed, color, stripeColor, mousePosRef,
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+/* ---- İPLİ GECE LAMBASI (NAİF MİNİMALİST ÇİZGİSEL DESIGN) ---- */
+function PullChainLamp({ isDark, onToggle }) {
+  const [isPulling, setIsPulling] = useState(false);
+
+  const handleClick = () => {
+    setIsPulling(true);
+    onToggle();
+    setTimeout(() => setIsPulling(false), 500);
+  };
+
+  return (
+    <div 
+      onClick={handleClick}
+      className="absolute top-0 right-6 sm:right-16 z-40 cursor-pointer group flex flex-col items-center select-none"
+      title={isDark ? "Gündüz Moduna Geç" : "Gece Moduna Geç"}
+    >
+      {/* Tavandan İnen İncecik Naif Kablo */}
+      <div className="w-[1.5px] h-6 bg-amber-200/40 group-hover:bg-amber-400/80 transition-colors" />
+
+      {/* Naif Sallanma Animasyonu */}
+      <motion.div 
+        className="relative flex flex-col items-center"
+        animate={isPulling ? { rotate: [-5, 5, -2, 0] } : { rotate: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
+        {/* Çizgisel Zayıf Abajur Şapkası */}
+        <div className="relative z-20 flex flex-col items-center">
+          <svg width="48" height="34" viewBox="0 0 48 34" fill="none" className="overflow-visible">
+            {/* Üst Küçük Yuva */}
+            <rect x="22" y="0" width="4" height="3" rx="1" fill={isDark ? "#FCD34D" : "#64748B"} opacity="0.8" />
+            
+            {/* Zarif Çizgisel Abajur Kubbesi */}
+            <path 
+              d="M16 3 Q24 -1 32 3 L44 24 Q24 28 4 24 Z" 
+              fill={isDark ? "rgba(251, 191, 36, 0.12)" : "rgba(255, 255, 255, 0.4)"}
+              stroke={isDark ? "#FBBF24" : "#64748B"}
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            
+            {/* Alt Çizgisel Halka */}
+            <ellipse 
+              cx="24" cy="24" rx="20" ry="4" 
+              fill={isDark ? "rgba(254, 243, 199, 0.2)" : "none"}
+              stroke={isDark ? "#FDE68A" : "#94A3B8"} 
+              strokeWidth="1.2"
+            />
+
+            {/* İç Filament Ampul (İncecik Parıltı) */}
+            <circle 
+              cx="24" cy="24" r="3.5" 
+              fill={isDark ? "#FEF3C7" : "#CBD5E1"} 
+              stroke={isDark ? "#F59E0B" : "#475569"} 
+              strokeWidth="1"
+            />
+          </svg>
+
+          {/* Ampul Işık Halesi (Soft Yumuşak Parıltı) */}
+          <div 
+            className="absolute left-1/2 -translate-x-1/2 bottom-0 w-4 h-4 rounded-full transition-all duration-500 pointer-events-none"
+            style={{
+              background: isDark ? '#FEF3C7' : 'transparent',
+              boxShadow: isDark ? '0 0 20px 8px rgba(251, 191, 36, 0.7), 0 0 35px 15px rgba(245, 158, 11, 0.35)' : 'none',
+            }}
+          />
+        </div>
+
+        {/* Yumuşak Naif Işık Süzülmesi */}
+        <AnimatePresence>
+          {isDark && (
+            <motion.div 
+              initial={{ opacity: 0, scaleY: 0 }}
+              animate={{ opacity: 1, scaleY: 1 }}
+              exit={{ opacity: 0, scaleY: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="absolute top-7 pointer-events-none z-10 origin-top"
+              style={{
+                width: 120,
+                height: 140,
+                clipPath: 'polygon(35% 0%, 65% 0%, 100% 100%, 0% 100%)',
+                background: 'linear-gradient(to bottom, rgba(254, 243, 199, 0.25) 0%, rgba(251, 191, 36, 0.08) 60%, transparent 100%)',
+                filter: 'blur(3px)',
+              }}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Zarif İnce İp Ve Halka Tutacak */}
+        <div className="relative flex flex-col items-center z-30">
+          {/* İnce Çizgili İp */}
+          <motion.div 
+            className="w-[1.2px] transition-all"
+            style={{
+              background: isDark ? 'linear-gradient(to bottom, #FBBF24, #F59E0B)' : 'linear-gradient(to bottom, #94A3B8, #64748B)',
+            }}
+            animate={isPulling ? { height: [30, 48, 28, 30] } : { height: 30 }}
+            transition={{ duration: 0.45, ease: "easeInOut" }}
+          />
+
+          {/* Minimalist Küçük Halka Tutak (Naif Minimalist Ring Handle) */}
+          <motion.div 
+            className="w-3 h-3 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all shadow-sm"
+            style={{
+              borderColor: isDark ? '#FBBF24' : '#64748B',
+              backgroundColor: isDark ? 'rgba(254, 243, 199, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+              boxShadow: isDark ? '0 0 8px rgba(251, 191, 36, 0.6)' : 'none',
+            }}
+            animate={isPulling ? { y: [0, 18, -3, 0], scale: [1, 1.25, 0.9, 1] } : { y: 0, scale: 1 }}
+            transition={{ duration: 0.45, ease: "easeInOut" }}
+          >
+            <div className="w-1 h-1 rounded-full" style={{ background: isDark ? '#D97706' : '#94A3B8' }} />
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* İncecik Zarif Etiket */}
+      <span 
+        className="mt-1.5 text-[9px] font-mono tracking-widest px-2 py-0.5 rounded-full transition-all duration-300 opacity-70 group-hover:opacity-100 flex items-center gap-1"
+        style={{
+          color: isDark ? '#FDE68A' : '#64748B',
+          background: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.6)',
+          border: isDark ? '1px solid rgba(251,191,36,0.2)' : '1px solid rgba(148,163,184,0.3)',
+        }}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full ${isDark ? 'bg-amber-400' : 'bg-slate-400'}`} />
+        {isDark ? 'gece' : 'gündüz'}
+      </span>
+    </div>
+  );
+}
+
+/* ---- UÇAN RENKLİ KELEBEKLER (ANIMATED BUTTERFLIES) ---- */
+function AnimatedButterflies() {
+  const butterflies = useMemo(() => [
+    { id: 1, color1: '#FF007F', color2: '#FF8800', scale: 0.85, duration: 18, delay: 0,   path: { x: ['-5vw', '25vw', '50vw', '80vw', '105vw'], y: ['70vh', '40vh', '55vh', '30vh', '15vh'] } },
+    { id: 2, color1: '#00F0FF', color2: '#7000FF', scale: 0.75, duration: 22, delay: 4,   path: { x: ['105vw', '75vw', '45vw', '20vw', '-5vw'], y: ['80vh', '50vh', '65vh', '35vh', '20vh'] } },
+    { id: 3, color1: '#FFD700', color2: '#FF4500', scale: 0.95, duration: 16, delay: 2,   path: { x: ['-5vw', '30vw', '60vw', '90vw', '105vw'], y: ['20vh', '45vh', '30vh', '60vh', '75vh'] } },
+    { id: 4, color1: '#00FF88', color2: '#00BFFF', scale: 0.65, duration: 25, delay: 7,   path: { x: ['105vw', '80vw', '50vw', '15vw', '-5vw'], y: ['30vh', '60vh', '25vh', '50vh', '70vh'] } },
+    { id: 5, color1: '#E040FB', color2: '#00E5FF', scale: 0.8,  duration: 20, delay: 10,  path: { x: ['-5vw', '35vw', '70vw', '105vw'],        y: ['50vh', '20vh', '45vh', '10vh'] } },
+    { id: 6, color1: '#FF6D00', color2: '#FFD600', scale: 0.7,  duration: 23, delay: 13,  path: { x: ['105vw', '60vw', '25vw', '-5vw'],        y: ['15vh', '40vh', '20vh', '60vh'] } },
+  ], []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-15">
+      {butterflies.map((b) => (
+        <motion.div
+          key={b.id}
+          className="absolute left-0 top-0"
+          initial={{ x: b.path.x[0], y: b.path.y[0], opacity: 0 }}
+          animate={{
+            x: b.path.x,
+            y: b.path.y,
+            opacity: [0, 0.95, 0.95, 0.95, 0],
+            rotate: [0, 15, -10, 20, -5],
+          }}
+          transition={{
+            duration: b.duration,
+            repeat: Infinity,
+            delay: b.delay,
+            ease: "easeInOut",
+          }}
+        >
+          {/* Kelebek Kanat Çırpma Animasyonu (Yumuşak & Yavaş Süzülüş) */}
+          <motion.div
+            style={{ scale: b.scale }}
+            animate={{ scaleX: [1, 0.35, 1] }}
+            transition={{ duration: 0.85, repeat: Infinity, ease: "easeInOut" }}
+            className="filter drop-shadow-[0_0_10px_rgba(255,255,255,0.7)]"
+          >
+            <svg width="42" height="38" viewBox="0 0 40 36" fill="none">
+              <defs>
+                <linearGradient id={`bfGrad1_${b.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor={b.color1} />
+                  <stop offset="100%" stopColor={b.color2} />
+                </linearGradient>
+                <linearGradient id={`bfGrad2_${b.id}`} x1="100%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor={b.color2} />
+                  <stop offset="100%" stopColor={b.color1} />
+                </linearGradient>
+              </defs>
+
+              {/* Sol Üst & Alt Kanat */}
+              <path d="M 20 18 Q 8 2 2 10 Q -2 20 14 22 Z" fill={`url(#bfGrad1_${b.id})`} opacity="0.9" />
+              <path d="M 20 18 Q 6 24 10 32 Q 18 36 19 24 Z" fill={`url(#bfGrad2_${b.id})`} opacity="0.85" />
+
+              {/* Sağ Üst & Alt Kanat */}
+              <path d="M 20 18 Q 32 2 38 10 Q 42 20 26 22 Z" fill={`url(#bfGrad2_${b.id})`} opacity="0.9" />
+              <path d="M 20 18 Q 34 24 30 32 Q 22 36 21 24 Z" fill={`url(#bfGrad1_${b.id})`} opacity="0.85" />
+
+              {/* Gövde ve Antenler */}
+              <ellipse cx="20" cy="18" rx="1.5" ry="8" fill="#1E293B" />
+              <path d="M 20 10 Q 16 4 14 3" stroke="#1E293B" strokeWidth="1" strokeLinecap="round" />
+              <path d="M 20 10 Q 24 4 26 3" stroke="#1E293B" strokeWidth="1" strokeLinecap="round" />
+            </svg>
+          </motion.div>
+        </motion.div>
+      ))}
+    </div>
   );
 }

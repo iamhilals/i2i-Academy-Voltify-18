@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { X, AlertTriangle, Zap, Activity, Clock, DollarSign, Power } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -12,98 +12,47 @@ const deviceChartData = [
 ];
 
 const DeviceDetailModal = ({ isOpen, onClose, device }) => {
-  const [frame, setFrame] = useState(1);
-  const [isOpening, setIsOpening] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-  const [showContent, setShowContent] = useState(false);
-
-  const totalFrames = 10;
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsOpening(true);
-      setFrame(1);
-      setShowContent(false);
-
-      const interval = setInterval(() => {
-        setFrame((prev) => {
-          if (prev < totalFrames) {
-            return prev + 1;
-          } else {
-            clearInterval(interval);
-            setIsOpening(false);
-            setShowContent(true);
-            return prev;
-          }
-        });
-      }, 150);
-
-      return () => clearInterval(interval);
-    }
-  }, [isOpen]);
-
-  const handleClose = () => {
-    setShowContent(false);
-    setIsClosing(true);
-
-    const interval = setInterval(() => {
-      setFrame((prev) => {
-        if (prev > 1) {
-          return prev - 1;
-        } else {
-          clearInterval(interval);
-          setIsClosing(false);
-          onClose();
-          return 1;
-        }
-      });
-    }, 150);
-  };
-
-  if (!isOpen && !isClosing) return null;
-
-  const zoomScale = 1 + (frame - 1) * 0.015;
+  // isOpen false ise anında kaybolur, hiçbir şey render edilmez.
+  if (!isOpen) return null; 
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      {/* Arka plan karartması */}
       <div 
-        className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
-          showContent ? 'opacity-100' : 'opacity-0'
-        }`} 
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose} // İsteğe bağlı: Arka plandaki siyahlığa tıklayınca da anında kapanır
       />
       
-      <div className="relative w-full max-w-6xl h-[85vh] flex items-center justify-center">
+      {/* Modal Ana Kutusu (Ufak bir beliren animasyon eklendi: animate-in fade-in) */}
+      <div className="relative w-full max-w-6xl h-[85vh] flex items-center justify-center animate-in fade-in zoom-in-95 duration-200">
         
-        {showContent && (
-          <button 
-            onClick={handleClose}
-            className="absolute top-0 right-0 z-50 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        )}
+        {/* Kapatma Çarpısı - Doğrudan onClose çağırır, hiç beklemez */}
+        <button 
+          onClick={onClose}
+          className="absolute top-0 right-0 z-50 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-colors"
+        >
+          <X className="w-6 h-6" />
+        </button>
 
         <div className="flex flex-col md:flex-row w-full h-full items-center justify-center gap-6">
           
-          {/* Appliance Animation Container */}
-          <div className="relative w-80 h-[500px] shrink-0 flex items-center justify-center">
-            <img 
-              src={`/fridge/${frame}.png`} 
-              alt="Appliance Animation" 
-              className="max-w-full max-h-full object-contain drop-shadow-2xl transition-transform duration-[150ms] ease-linear"
-              style={{ transform: `scale(${zoomScale})` }}
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
-            />
+          {/* Video Container (Bulaşık Makinesi) */}
+          <div className="relative w-[400px] h-[550px] shrink-0 flex items-center justify-center rounded-2xl overflow-hidden">
+            <video 
+              className="w-full h-full object-cover drop-shadow-2xl"
+              autoPlay 
+              loop 
+              muted 
+              playsInline
+            >
+              {/* Video yolunu kendi projene göre ayarlayabilirsin */}
+              <source src="/videos/fridge.mp4" type="video/mp4" />
+            </video>
           </div>
 
-          {/* Data Content (Expanded for charts and more data) */}
-          <div 
-            className={`flex-1 w-full max-w-3xl bg-white rounded-[2rem] p-8 shadow-2xl transition-all duration-500 transform overflow-y-auto max-h-full ${
-              showContent ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 pointer-events-none'
-            }`}
-          >
+          {/* Data Content (Veri Paneli - Anında görünür) */}
+          <div className="flex-1 w-full max-w-3xl bg-white rounded-[2rem] p-8 shadow-2xl overflow-y-auto max-h-full">
+            
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
@@ -111,8 +60,8 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                   <Zap className="w-7 h-7 text-blue-500" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black text-gray-900">{device?.name || 'Akıllı Buzdolabı'}</h2>
-                  <p className="text-gray-500 font-medium">{device?.type || 'Soğutucu'} • Sistem Verileri</p>
+                  <h2 className="text-3xl font-black text-gray-900">{device?.name || 'Bulaşık Makinesi'}</h2>
+                  <p className="text-gray-500 font-medium">{device?.type || 'Beyaz Eşya'} • Sistem Verileri</p>
                 </div>
               </div>
               <div className="text-right">
@@ -192,7 +141,6 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
             </div>
 
           </div>
-
         </div>
       </div>
     </div>
