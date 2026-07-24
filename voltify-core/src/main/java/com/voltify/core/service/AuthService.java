@@ -57,7 +57,14 @@ public class AuthService {
 
         // 6. Token üret ve cevap olarak dön
         String token = jwtUtil.generateToken(savedUser.getEmail());
-        return new AuthResponse(token, savedUser.getEmail(), savedUser.getUsername());
+        return new AuthResponse(
+            token, 
+            savedUser.getEmail(), 
+            savedUser.getUsername(),
+            savedUser.getFirstName(),
+            savedUser.getLastName(),
+            savedUser.getPhoneNumber()
+        );
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -79,6 +86,13 @@ public class AuthService {
 
         // 4. Doğruysa token üret ve dön
         String token = jwtUtil.generateToken(user.getEmail());
-        return new AuthResponse(token, user.getEmail(), user.getUsername());
+        return new AuthResponse(
+            token, 
+            user.getEmail(), 
+            user.getUsername(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getPhoneNumber()
+        );
     }
 }
