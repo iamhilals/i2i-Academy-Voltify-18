@@ -76,6 +76,11 @@ public class HomeController {
         return ResponseEntity.ok(homeService.addAppliance(homeId, appliance));
     }
 
+    @PutMapping("/{homeId}/appliances/{applianceId}")
+    public ResponseEntity<Appliance> updateAppliance(@PathVariable Long homeId, @PathVariable Long applianceId, @RequestBody Appliance appliance) {
+        return ResponseEntity.ok(homeService.updateAppliance(homeId, applianceId, appliance));
+    }
+
     @DeleteMapping("/{homeId}/appliances/{applianceId}")
     public ResponseEntity<Void> deleteAppliance(@PathVariable Long homeId, @PathVariable Long applianceId) {
         homeService.deleteAppliance(homeId, applianceId);

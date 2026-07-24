@@ -215,6 +215,24 @@ public class HomeService {
         homeRepository.save(home);
     }
 
+    // Bir eve ait cihazı günceller
+    @Transactional
+    public Appliance updateAppliance(Long homeId, Long applianceId, Appliance updated) {
+        Home home = homeRepository.findById(homeId)
+            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+        assertOwnership(home);
+
+        Appliance appliance = applianceRepository.findById(applianceId)
+            .orElseThrow(() -> new RuntimeException("Appliance not found: " + applianceId));
+
+        if (updated.getName() != null) appliance.setName(updated.getName());
+        if (updated.getSafePowerLimit() != null) appliance.setSafePowerLimit(updated.getSafePowerLimit());
+        if (updated.getRoom() != null) appliance.setRoom(updated.getRoom());
+        if (updated.getType() != null) appliance.setType(updated.getType());
+
+        return applianceRepository.save(appliance);
+    }
+
     // Yardımcı: Bu evin, isteği yapan kullanıcıya ait olup olmadığını kontrol eder
     // Değilse ForbiddenException fırlatır (GlobalExceptionHandler bunu 403'e çevirir)
     private void assertOwnership(Home home) {

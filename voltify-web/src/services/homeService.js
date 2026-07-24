@@ -36,6 +36,11 @@ export const homeService = {
     return response.data;
   },
 
+  async updateAppliance(homeId, applianceId, applianceData) {
+    const response = await API.put(`/api/homes/${homeId}/appliances/${applianceId}`, applianceData);
+    return response.data;
+  },
+
   async deleteAppliance(homeId, applianceId) {
     const response = await API.delete(`/api/homes/${homeId}/appliances/${applianceId}`);
     return response.data;
