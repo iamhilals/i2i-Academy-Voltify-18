@@ -2,6 +2,55 @@ import React, { useState, useEffect } from 'react';
 import { Server, Activity, AlertTriangle, Power, Zap, MapPin, Search } from 'lucide-react';
 import { homeService } from '../services/homeService';
 
+// Maps device name/type to a local public PNG image path
+const getDeviceLocalImage = (type, name) => {
+  const lower = (name || '').toLowerCase();
+  const lType = (type || '').toLowerCase();
+  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu'))
+    return '/fridge/1.png';
+  return null; // No local PNG available — will use emoji tile
+};
+
+// Returns a display emoji for device type for non-image fallback
+const getDeviceEmoji = (type, name) => {
+  const lower = (name || '').toLowerCase();
+  const lType = (type || '').toLowerCase();
+  if (lower.includes('klima') || lType.includes('iklimlendirme')) return '❄️';
+  if (lower.includes('çamaşır')) return '🫧';
+  if (lower.includes('kurutucu')) return '🌀';
+  if (lower.includes('televizyon') || lower.includes('tv')) return '📺';
+  if (lower.includes('konsol') || lower.includes('oyun')) return '🎮';
+  if (lower.includes('süpürge')) return '🤖';
+  if (lower.includes('laptop') || lower.includes('dizüstü')) return '💻';
+  if (lower.includes('masaüstü') || lower.includes('desktop')) return '🖥️';
+  if (lower.includes('kombi') || lower.includes('ısıtıcı')) return '🔥';
+  if (lower.includes('fan') || lower.includes('vantilatör')) return '💨';
+  if (lower.includes('kettle') || lower.includes('su ısıtıcı')) return '☕';
+  if (lower.includes('mikro')) return '📡';
+  if (lower.includes('kahve')) return '☕';
+  if (lower.includes('blender')) return '🥤';
+  if (lower.includes('panini') || lower.includes('tost')) return '🥪';
+  if (lower.includes('ampul') || lower.includes('lamba')) return '💡';
+  if (lower.includes('priz')) return '🔌';
+  if (lower.includes('ocak') || lower.includes('fırın')) return '🍳';
+  if (lower.includes('bulaşık')) return '🍽️';
+  if (lower.includes('kamera') || lower.includes('güvenlik')) return '📷';
+  return '⚡';
+};
+
+// Background gradient colors per device category
+const getDeviceGradient = (type, name) => {
+  const lower = (name || '').toLowerCase();
+  const lType = (type || '').toLowerCase();
+  if (lower.includes('klima') || lType.includes('iklimlendirme') || lower.includes('fan')) return 'from-sky-50 to-blue-100';
+  if (lower.includes('çamaşır') || lower.includes('bulaşık')) return 'from-indigo-50 to-indigo-100';
+  if (lower.includes('televizyon') || lower.includes('konsol') || lower.includes('laptop') || lower.includes('masaüstü')) return 'from-gray-50 to-slate-100';
+  if (lower.includes('kahve') || lower.includes('kettle') || lower.includes('ocak') || lower.includes('tost')) return 'from-amber-50 to-orange-100';
+  if (lower.includes('süpürge')) return 'from-violet-50 to-purple-100';
+  if (lower.includes('kombi') || lower.includes('ısıtıcı')) return 'from-red-50 to-orange-100';
+  return 'from-green-50 to-emerald-100';
+};
+
 const Devices = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -210,11 +259,31 @@ const Devices = () => {
                   </button>
                 </div>
 
-                {/* Device Info */}
+                {/* Device Image or Emoji Tile */}
                 <div className="flex flex-col items-center mb-6">
                   <div className="relative mb-4">
-                    <div className={`w-24 h-24 rounded-2xl overflow-hidden shadow-sm border-4 transition-all duration-300 ${device.isAnomalous ? 'border-red-400 scale-105' : isActive ? 'border-green-100' : 'border-transparent grayscale opacity-70'}`}>
-                      <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
+                    <div className={`w-24 h-24 rounded-2xl overflow-hidden shadow-sm border-4 transition-all duration-300 ${
+                      device.isAnomalous ? 'border-red-400 scale-105' : isActive ? 'border-green-100' : 'border-transparent'
+                    }`}>
+                      {(() => {
+                        const localImg = getDeviceLocalImage(device.type, device.name);
+                        if (localImg) {
+                          return (
+                            <img
+                              src={localImg}
+                              alt={device.name}
+                              className={`w-full h-full object-cover ${!isActive && !isStandby ? 'grayscale opacity-70' : ''}`}
+                            />
+                          );
+                        }
+                        return (
+                          <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${getDeviceGradient(device.type, device.name)} ${
+                            !isActive && !isStandby ? 'grayscale opacity-60' : ''
+                          }`}>
+                            <span className="text-4xl">{getDeviceEmoji(device.type, device.name)}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                   <h3 className="font-bold text-gray-900 text-lg text-center leading-tight mb-1">{device.name}</h3>
