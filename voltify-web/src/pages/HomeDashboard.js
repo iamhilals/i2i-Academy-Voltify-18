@@ -5,96 +5,55 @@ import AddHomeSlideover from '../components/AddHomeSlideover';
 import VoltBotWidget from '../components/VoltBotWidget';
 import { homeService } from '../services/homeService';
 
-const mockHomes = [
-  {
-    id: 1,
-    name: 'Villa i2i',
-    consumption: '1.2 kW',
-    status: 'Oktimal',
-    health: 'MÜKEMMEL',
-    healthScore: 5,
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=400&h=300',
-    isCritical: false,
-    squareMeters: 240,
-    roomLayout: '4+1'
-  },
-  {
-    id: 2,
-    name: 'Crimson Lodge',
-    consumption: '8.7 kW',
-    status: 'Cezai Durum',
-    health: 'KRİTİK',
-    healthScore: 1,
-    image: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&q=80&w=400&h=300',
-    isCritical: true,
-    warning: 'Aşırı şebeke çekimi!',
-    squareMeters: 180,
-    roomLayout: '3+1'
-  },
-  {
-    id: 3,
-    name: 'Eco Habitat',
-    consumption: '0.4 kW',
-    status: 'Verimlilik PRO',
-    health: 'KUSURSUZ',
-    healthScore: 5,
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=400&h=300',
-    isCritical: false,
-    squareMeters: 120,
-    roomLayout: '2+1'
-  },
-  {
-    id: 4,
-    name: 'Neo Studio',
-    consumption: '3.1 kW',
-    status: 'Stabil',
-    health: 'ORTA',
-    healthScore: 3,
-    image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&q=80&w=400&h=300',
-    isCritical: false,
-    squareMeters: 85,
-    roomLayout: '1+1'
-  }
+const mockHomeImages = [
+  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=400&h=300',
+  'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&q=80&w=400&h=300',
+  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=400&h=300',
+  'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&q=80&w=400&h=300'
 ];
 
 const HomeDashboard = () => {
   const navigate = useNavigate();
   const [isAddHomeOpen, setIsAddHomeOpen] = useState(false);
-  const [homes, setHomes] = useState(mockHomes);
+  // Default to empty array [] so new accounts start with 0 homes cleanly
+  const [homes, setHomes] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadHomes = async () => {
+    setIsLoading(true);
     try {
       const backendHomes = await homeService.getMyHomes();
-      if (Array.isArray(backendHomes)) {
-        if (backendHomes.length > 0) {
-          const formatted = backendHomes.map((h, idx) => {
-            const hasBreached = h.billingLedger 
-              ? (h.billingLedger.isPenaltyActive || h.billingLedger.accumulatedWatt >= h.powerQuotaWatt || h.billingLedger.currentBalance >= h.budgetQuotaTry)
-              : false;
-            
-            return {
-              id: h.id,
-              name: h.name || `Ev ${h.id}`,
-              consumption: h.billingLedger 
-                ? `${Math.round((h.billingLedger.accumulatedWatt / 1000) * 10) / 10} kW`
-                : `${h.appliances ? (h.appliances.length * 0.5).toFixed(1) : '1.2'} kW`,
-              status: h.billingLedger && h.billingLedger.isPenaltyActive ? 'Cezai Durum' : 'Aktif',
-              health: hasBreached ? 'KRİTİK' : 'MÜKEMMEL',
-              healthScore: hasBreached ? 1 : 5,
-              image: mockHomes[idx % mockHomes.length].image,
-              isCritical: hasBreached,
-              warning: hasBreached ? 'Bütçe veya güç kotası aşıldı!' : null,
-              squareMeters: h.squareMeters || 120,
-              roomLayout: h.roomLayout || '2+1',
-            };
-          });
-          setHomes(formatted);
-        } else {
-          setHomes([]);
-        }
+      if (Array.isArray(backendHomes) && backendHomes.length > 0) {
+        const formatted = backendHomes.map((h, idx) => {
+          const hasBreached = h.billingLedger 
+            ? (h.billingLedger.isPenaltyActive || h.billingLedger.accumulatedWatt >= h.powerQuotaWatt || h.billingLedger.currentBalance >= h.budgetQuotaTry)
+            : false;
+          
+          return {
+            id: h.id,
+            name: h.name || `Ev ${h.id}`,
+            consumption: h.billingLedger 
+              ? `${Math.round((h.billingLedger.accumulatedWatt / 1000) * 10) / 10} kW`
+              : `${h.appliances ? (h.appliances.length * 0.5).toFixed(1) : '0.0'} kW`,
+            status: h.billingLedger && h.billingLedger.isPenaltyActive ? 'Cezai Durum' : 'Aktif',
+            health: hasBreached ? 'KRİTİK' : 'MÜKEMMEL',
+            healthScore: hasBreached ? 1 : 5,
+            image: mockHomeImages[idx % mockHomeImages.length],
+            isCritical: hasBreached,
+            warning: hasBreached ? 'Bütçe veya güç kotası aşıldı!' : null,
+            squareMeters: h.squareMeters || 120,
+            roomLayout: h.roomLayout || '2+1',
+          };
+        });
+        setHomes(formatted);
+      } else {
+        setHomes([]);
       }
     } catch (err) {
-      console.warn('Backend server unreachable or unauthenticated, using mock homes data:', err);
+      console.warn('Could not load user homes from backend:', err);
+      setHomes([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
