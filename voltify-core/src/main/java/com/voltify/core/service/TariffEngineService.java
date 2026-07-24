@@ -21,11 +21,10 @@ public class TariffEngineService {
     private static final double BREACH_80_THRESHOLD = 0.80;
     private static final double BREACH_100_THRESHOLD = 1.00;
 
-    // 1 Watt-saniye kaç kWh eder? 1000 (kW) * 3600 (saat) = 3.600.000
-    // Telemetry her N saniyede geliyor ama biz Watt-cycle'ı direkt akümüle ediyoruz
-    // Basitlik için Watt'ı direkt kWh gibi düşünelim (üretimde farklı yaklaşım olurdu)
-    // Cost = accumulatedWatt / 1000 * rate  (basit yaklaşım)
-    private static final double WATT_TO_KWH_DIVISOR = 1000.0;
+    // SI Fiziksel Dönüşüm: Telemetry her 2 saniyede 1 Paket alır (dt = 2.0s)
+    // Tüketim (kWh) = (Watt / 1000.0) * (2.0s / 3600.0s) = Watt / 1,800,000.0
+    private static final double TELEMETRY_INTERVAL_SECONDS = 2.0;
+    private static final double WATT_TO_KWH_FACTOR = (1000.0 * 3600.0) / TELEMETRY_INTERVAL_SECONDS; // 1,800,000.0
 
     private final HomeRepository homeRepository;
     private final BillingLedgerRepository billingLedgerRepository;
@@ -45,7 +44,7 @@ public class TariffEngineService {
         this.alertNotificationService = alertNotificationService;
     }
 
-    // Bir telemetry event'i işle: accumulated watt ve balance güncelle,
+    // Bir telemetry event'i işle: SI fizik kurallarına göre kWh ve TL faturasını güncelle,
     // kota kontrolü yap, gerekirse penalty tarifine geç ve event log oluştur
     @Transactional
     public void processTelemetry(Long homeId, Double wattReading) {
@@ -59,9 +58,10 @@ public class TariffEngineService {
         // 1) Ignite'tan canlı state al (yoksa oluştur)
         HomeLiveState state = igniteService.getOrCreateHomeState(homeId);
 
-        // 2) Geçerli rate belirle
+        // 2) Gerçek Fizik Hesabı: 2 saniyelik periyottaki kWh miktarı ve maliyeti
+        double addedKwh = wattReading / WATT_TO_KWH_FACTOR;
         double rate = state.getIsPenaltyActive() ? home.getPenaltyRate() : home.getBaseRate();
-        double addedCost = (wattReading / WATT_TO_KWH_DIVISOR) * rate;
+        double addedCost = addedKwh * rate;
 
         // 3) Ignite state güncelle
         double newWatt = state.getAccumulatedWatt() + wattReading;

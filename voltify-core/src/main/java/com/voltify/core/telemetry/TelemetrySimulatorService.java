@@ -50,17 +50,7 @@ public class TelemetrySimulatorService {
             if (home.getAppliances() == null) continue;
 
             for (Appliance appliance : home.getAppliances()) {
-                double safeLimit = appliance.getSafePowerLimit();
-                double randomWatt;
-
-                // Gerçekçi dağılım: %90 sağlıklı çalışma, %10 anormal tüketim
-                if (random.nextDouble() < 0.9) {
-                    // Sağlıklı: safe limit'in %60-95'i arası
-                    randomWatt = safeLimit * (0.6 + random.nextDouble() * 0.35);
-                } else {
-                    // Anormal: safe limit'in %105-130'u arası
-                    randomWatt = safeLimit * (1.05 + random.nextDouble() * 0.25);
-                }
+                double randomWatt = calculateRealisticWatt(appliance);
 
                 TelemetryEvent event = new TelemetryEvent();
                 event.setHomeId(home.getId());
@@ -75,6 +65,44 @@ public class TelemetrySimulatorService {
                     System.err.println("Telemetry simülasyonu hatası: " + e.getMessage());
                 }
             }
+        }
+    }
+
+    // TSE / EPDK Standartlarına uygun gerçekçi cihaz güç tüketimi hesaplama
+    private double calculateRealisticWatt(Appliance appliance) {
+        String name = appliance.getName() != null ? appliance.getName().toLowerCase() : "";
+        double safeLimit = appliance.getSafePowerLimit() > 0 ? appliance.getSafePowerLimit() : 1500.0;
+        
+        double minWatt, maxWatt;
+        if (name.contains("buzdolabı") || name.contains("fridge")) {
+            minWatt = 40.0;
+            maxWatt = 150.0;
+        } else if (name.contains("kettle") || name.contains("su ısıtıcı")) {
+            minWatt = 1800.0;
+            maxWatt = 2400.0;
+        } else if (name.contains("fırın") || name.contains("oven")) {
+            minWatt = 1800.0;
+            maxWatt = 3000.0;
+        } else if (name.contains("televizyon") || name.contains("tv")) {
+            minWatt = 50.0;
+            maxWatt = 200.0;
+        } else if (name.contains("klima") || name.contains("ac")) {
+            minWatt = 600.0;
+            maxWatt = 1800.0;
+        } else if (name.contains("çamaşır") || name.contains("washing")) {
+            minWatt = 300.0;
+            maxWatt = 2000.0;
+        } else {
+            minWatt = safeLimit * 0.4;
+            maxWatt = safeLimit * 0.9;
+        }
+
+        // %90 sağlıklı çalışma, %10 anormal ihlal testi
+        if (random.nextDouble() < 0.9) {
+            return minWatt + (maxWatt - minWatt) * random.nextDouble();
+        } else {
+            // Anomali: Güvenli sınırın 1.1x ila 1.35x katına sıçrama
+            return safeLimit * (1.1 + random.nextDouble() * 0.25);
         }
     }
 }
