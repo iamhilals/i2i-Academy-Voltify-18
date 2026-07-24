@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music, Disc, ChevronDown, ChevronUp, Radio, ListMusic, Upload, Check } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music, Disc, Radio, ListMusic, Upload, Check, Maximize2 } from 'lucide-react';
 
 const INITIAL_TRACKS = [
   {
@@ -52,7 +52,7 @@ const MusicPlayerBar = () => {
   const [trackDuration, setTrackDuration] = useState(300);
   const [volume, setVolume] = useState(0.7);
   const [isMuted, setIsMuted] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isHovered, setIsHovered] = useState(false); // Default: Compact Pill, Expand on Hover
   const [showPlaylist, setShowPlaylist] = useState(false);
 
   // HTML5 Audio Reference
@@ -123,7 +123,8 @@ const MusicPlayerBar = () => {
     setIsPlaying(false);
   };
 
-  const togglePlay = () => {
+  const togglePlay = (e) => {
+    if (e) e.stopPropagation();
     if (isPlaying) {
       pauseTrack();
     } else {
@@ -207,10 +208,18 @@ const MusicPlayerBar = () => {
   const progressPercent = Math.min(100, (currentTime / currentDur) * 100);
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-4xl transition-all duration-300">
+    <div 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setShowPlaylist(false);
+      }}
+      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 ease-out"
+      style={{ width: isHovered ? '92%' : '290px', maxWidth: isHovered ? '56rem' : '290px' }}
+    >
       
-      {/* Playlist Popover Menu */}
-      {showPlaylist && (
+      {/* Playlist Popover Menu (Only when expanded & toggled) */}
+      {isHovered && showPlaylist && (
         <div className="mb-3 bg-gray-900/95 dark:bg-[#182119]/95 backdrop-blur-2xl border border-white/10 text-white rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom-3 duration-200 max-h-80 overflow-y-auto">
           <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/10">
             <div className="flex items-center gap-2">
@@ -259,38 +268,32 @@ const MusicPlayerBar = () => {
         </div>
       )}
 
-      {/* Collapsed Pill View */}
-      {isCollapsed ? (
-        <div className="bg-gray-900/90 dark:bg-[#1E271F]/95 backdrop-blur-xl border border-white/10 text-white rounded-full px-5 py-3 shadow-2xl flex items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setIsCollapsed(false)}>
-            <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${currentTrack.coverColor} flex items-center justify-center shadow-md ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }}>
+      {/* COMPACT DEFAULT VIEW (When NOT hovered) */}
+      {!isHovered ? (
+        <div className="bg-gray-900/90 dark:bg-[#1E271F]/95 backdrop-blur-xl border border-white/10 text-white rounded-full px-4 py-2.5 shadow-2xl flex items-center justify-between gap-3 cursor-pointer group hover:border-green-500/50 transition-all duration-300">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${currentTrack.coverColor} flex items-center justify-center shadow-md shrink-0 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }}>
               <Disc className="w-4 h-4 text-white" />
             </div>
-            <div>
-              <p className="text-xs font-bold truncate max-w-[140px]">{currentTrack.title}</p>
-              <p className="text-[10px] text-gray-400 font-medium truncate max-w-[140px]">{currentTrack.artist}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold truncate text-white group-hover:text-green-400 transition-colors">{currentTrack.title}</p>
+              <p className="text-[10px] text-gray-400 font-medium truncate">{currentTrack.artist}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button 
               onClick={togglePlay}
-              className="w-8 h-8 rounded-full bg-[#4C811F] hover:bg-green-600 text-white flex items-center justify-center shadow-sm transition-transform active:scale-95"
+              className="w-8 h-8 rounded-full bg-[#4C811F] hover:bg-green-600 text-white flex items-center justify-center shadow-md transition-transform active:scale-95"
             >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
             </button>
-            <button 
-              onClick={() => setIsCollapsed(false)} 
-              className="p-1.5 text-gray-400 hover:text-white transition-colors"
-              title="Genişlet"
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
+            <Maximize2 className="w-3.5 h-3.5 text-gray-400 group-hover:text-white transition-colors" />
           </div>
         </div>
       ) : (
-        /* Full Expanded Player Bar */
-        <div className="bg-gray-900/95 dark:bg-[#182119]/95 backdrop-blur-2xl border border-white/10 text-white rounded-3xl p-4 shadow-[0_15px_50px_rgba(0,0,0,0.35)] relative overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+        /* EXPANDED HOVER VIEW (When hovered) */
+        <div className="bg-gray-900/95 dark:bg-[#182119]/95 backdrop-blur-2xl border border-white/10 text-white rounded-3xl p-4 shadow-[0_15px_50px_rgba(0,0,0,0.45)] relative overflow-hidden animate-in fade-in zoom-in-95 duration-300">
           
           {/* Progress Bar Line at top of bar */}
           <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/10 cursor-pointer group" onClick={handleSeek}>
@@ -379,7 +382,7 @@ const MusicPlayerBar = () => {
               </div>
             </div>
 
-            {/* Right: Volume & Time & Upload File & Collapse Button */}
+            {/* Right: Volume & Time & Upload File */}
             <div className="flex items-center justify-end gap-3 w-full sm:w-1/3">
               <span className="text-xs font-medium text-gray-400 font-mono hidden md:inline">
                 {formatTime(currentTime)} / {formatTime(currentDur)}
@@ -415,15 +418,6 @@ const MusicPlayerBar = () => {
                   className="w-16 sm:w-20 accent-[#4C811F] bg-gray-700 h-1.5 rounded-lg cursor-pointer"
                 />
               </div>
-
-              {/* Collapse Bar Button */}
-              <button 
-                onClick={() => setIsCollapsed(true)} 
-                className="p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-                title="Küçült"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </button>
             </div>
 
           </div>
