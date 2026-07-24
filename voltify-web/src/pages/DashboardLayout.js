@@ -8,7 +8,10 @@ import { authService } from '../services/authService';
 const DashboardLayout = () => {
   const navigate = useNavigate();
   const [showTooltip, setShowTooltip] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('voltify_theme');
+    return saved ? saved === 'dark' : false;
+  });
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -35,8 +38,8 @@ const DashboardLayout = () => {
     return () => window.removeEventListener('voltify_user_updated', updateUser);
   }, []);
 
-  // Apply dark mode class to body/html if needed for global Tailwind 'dark:' prefix
   useEffect(() => {
+    localStorage.setItem('voltify_theme', isDarkMode ? 'dark' : 'light');
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {

@@ -6,7 +6,20 @@ import RegisterCard from './RegisterCard';
 
 export default function AuthLayout({ mode }) {
   const navigate = useNavigate();
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('voltify_theme');
+    return saved ? saved === 'dark' : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('voltify_theme', isDark ? 'dark' : 'light');
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
+
   const mousePosRef = useRef({ x: -1000, y: -1000 });
 
   useEffect(() => {
