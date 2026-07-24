@@ -13,6 +13,7 @@ const Devices = lazy(() => import('./pages/Devices'));
 const Billing = lazy(() => import('./pages/Billing'));
 const Inbox = lazy(() => import('./pages/Inbox'));
 const MetaHome = lazy(() => import('./pages/MetaHome'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 // Yükleme esnasında gösterilecek yeşil dönen spinner
 const PageLoader = () => (
@@ -43,6 +44,7 @@ function App() {
             <Route path="devices" element={<Devices />} />
             <Route path="billing" element={<Billing />} />
             <Route path="inbox" element={<Inbox />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -148,16 +148,40 @@ export default function RegisterCard({ isDark, onGoLogin }) {
     }
 
     const username = (firstName + lastName).replace(/\s+/g, '').toLowerCase() || email.split('@')[0];
+    const fullName = `${firstName} ${lastName}`.trim();
+    const avatarSeed = selectedAvatar === 'woman' ? 'Aneka' : selectedAvatar === 'man' ? 'Felix' : selectedAvatar === 'bot' ? 'Zack' : 'Brian';
 
     setLoading(true);
     try {
       await authService.register(firstName, lastName, username, email, phone, password);
+      // Ensure all registered fields are saved in voltify_user!
+      localStorage.setItem('voltify_user', JSON.stringify({
+        username,
+        fullName,
+        firstName,
+        lastName,
+        email,
+        phone,
+        avatar: avatarSeed,
+        role: 'USER'
+      }));
+      window.dispatchEvent(new Event('voltify_user_updated'));
       setLoading(false);
       navigate('/dashboard');
     } catch (err) {
       console.warn('Backend register unavailable or returned error, falling back to demo registration:', err);
       localStorage.setItem('voltify_token', 'demo-jwt-token');
-      localStorage.setItem('voltify_user', JSON.stringify({ username, email, role: 'USER' }));
+      localStorage.setItem('voltify_user', JSON.stringify({
+        username,
+        fullName,
+        firstName,
+        lastName,
+        email,
+        phone,
+        avatar: avatarSeed,
+        role: 'USER'
+      }));
+      window.dispatchEvent(new Event('voltify_user_updated'));
       setLoading(false);
       navigate('/dashboard');
     }

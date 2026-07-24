@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutGrid, Server, Users, BarChart3, Zap, Settings, Brain, Atom, LogOut, Moon, Sun, Bell, CreditCard, Mail } from 'lucide-react';
 import ChatbotSlideover from '../components/ChatbotSlideover';
+import MusicPlayerBar from '../components/MusicPlayerBar';
+import { authService } from '../services/authService';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -9,6 +11,29 @@ const DashboardLayout = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  const [userProfile, setUserProfile] = useState(() => {
+    const user = authService.getCurrentUser();
+    return {
+      fullName: (user && (user.fullName || user.username)) || 'Volkan Yüksel',
+      avatar: (user && user.avatar) || 'Felix'
+    };
+  });
+
+  useEffect(() => {
+    const updateUser = () => {
+      const user = authService.getCurrentUser();
+      if (user) {
+        setUserProfile({
+          fullName: user.fullName || user.username || 'Volkan Yüksel',
+          avatar: user.avatar || 'Felix'
+        });
+      }
+    };
+
+    window.addEventListener('voltify_user_updated', updateUser);
+    return () => window.removeEventListener('voltify_user_updated', updateUser);
+  }, []);
 
   // Apply dark mode class to body/html if needed for global Tailwind 'dark:' prefix
   useEffect(() => {
@@ -156,14 +181,18 @@ const DashboardLayout = () => {
 
         {/* Bottom Actions (Profile, Logout, Pro Plan) */}
         <div className="p-4 mb-4 flex flex-col gap-2">
-          <button className="w-full bg-white dark:bg-[#1E271F] hover:bg-gray-50 dark:hover:bg-[#253026] border border-gray-200 dark:border-emerald-950/30 rounded-xl py-3 px-4 transition-colors flex items-center justify-between group shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=e2e8f0" alt="Profile" className="w-full h-full object-cover" />
+          <button 
+            onClick={() => navigate('/dashboard/settings')}
+            className="w-full bg-white dark:bg-[#1E271F] hover:bg-gray-50 dark:hover:bg-[#253026] border border-gray-200 dark:border-emerald-950/30 rounded-xl py-3 px-4 transition-colors flex items-center justify-between group shadow-sm cursor-pointer"
+            title="Hesap ve Profil Ayarları"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile.avatar}&backgroundColor=e2e8f0`} alt="Profile" className="w-full h-full object-cover" />
               </div>
-              <span className="font-bold text-gray-900 dark:text-gray-200 text-sm">Volkan Yüksel</span>
+              <span className="font-bold text-gray-900 dark:text-gray-200 text-sm truncate">{userProfile.fullName}</span>
             </div>
-            <Settings className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+            <Settings className="w-5 h-5 text-gray-400 group-hover:text-[#4C811F] transition-colors shrink-0" />
           </button>
           
           <button 
@@ -184,7 +213,7 @@ const DashboardLayout = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Topbar */}
-        <header className="h-20 bg-transparent flex items-center justify-between px-8 z-10 transition-colors">
+        <header className="h-20 bg-transparent flex items-center justify-between px-8 z-40 relative transition-colors">
           <div className="flex items-center gap-3 bg-blue-50/50 dark:bg-emerald-950/20 backdrop-blur-sm px-4 py-2 rounded-full border border-blue-100/50 dark:border-emerald-900/20">
             <BarChart3 className="w-4 h-4 text-blue-500" />
             <span className="text-sm font-medium text-blue-900 dark:text-emerald-300">Canlı Şebeke Yükü: 12.4 GW</span>
@@ -203,12 +232,16 @@ const DashboardLayout = () => {
             </div>
 
             {/* Profile */}
-            <div className="flex items-center gap-3">
+            <div 
+              onClick={() => navigate('/dashboard/settings')}
+              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+              title="Hesap Ayarları"
+            >
               <div className="w-10 h-10 rounded-full bg-gray-200 border-2 border-white dark:border-[#1E271F] shadow-sm overflow-hidden">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=e2e8f0" alt="Profile" className="w-full h-full object-cover" />
+                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile.avatar}&backgroundColor=e2e8f0`} alt="Profile" className="w-full h-full object-cover" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-200">Baş Stratejist</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-gray-200 truncate max-w-[120px]">{userProfile.fullName}</span>
                 <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Seviye 42</span>
               </div>
             </div>
@@ -219,16 +252,21 @@ const DashboardLayout = () => {
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="w-10 h-10 rounded-full bg-white dark:bg-[#1E271F] border border-gray-200 dark:border-emerald-950/20 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-emerald-950/30 shadow-sm transition-all relative"
+                className="w-10 h-10 rounded-full bg-white dark:bg-[#1E271F] border border-gray-200 dark:border-emerald-950/20 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-emerald-950/30 shadow-sm transition-all relative z-50"
               >
                 <Bell className={`w-5 h-5 ${showNotifications ? 'fill-gray-900 text-gray-900' : ''}`} />
                 {/* Notification Badge */}
                 <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
               </button>
 
+              {/* Backdrop Overlay when dropdown is open */}
+              {showNotifications && (
+                <div className="fixed inset-0 z-40 bg-black/5 backdrop-blur-[1px]" onClick={() => setShowNotifications(false)} />
+              )}
+
               {/* Dropdown Menu */}
               {showNotifications && (
-                <div className="absolute top-14 right-[-60px] w-80 bg-white dark:bg-[#1E271F] rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 dark:border-emerald-950/20 z-50 overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
+                <div className="absolute top-14 right-0 w-80 sm:w-96 bg-white dark:bg-[#1E271F] rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-emerald-950/30 z-[100] overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
                   <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <h3 className="font-bold text-gray-900 text-sm">Bildirimler</h3>
                     <span className="text-xs font-bold text-[#4C811F] bg-green-100 px-2 py-0.5 rounded-full">3 Yeni</span>
@@ -374,6 +412,9 @@ const DashboardLayout = () => {
         isOpen={isChatOpen} 
         onClose={() => setIsChatOpen(false)} 
       />
+
+      {/* Floating Music Player Bar */}
+      <MusicPlayerBar />
     </div>
   );
 };

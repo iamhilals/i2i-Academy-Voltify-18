@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Brain, Send, Mic, Sparkles, MoreHorizontal, User } from 'lucide-react';
+import { aiService } from '../services/aiService';
 
 const mockChatHistory = [
   { id: 1, sender: 'volty', text: 'Merhaba Baş Stratejist! Ben Volty ⚡ Bugün enerji verimliliğinde harika gidiyorsun. Nasıl yardımcı olabilirim?', time: '09:41' },
@@ -26,15 +27,16 @@ const ChatbotSlideover = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    const promptText = inputText.trim();
+    if (!promptText) return;
 
     // Add user message
     const newUserMsg = {
       id: Date.now(),
       sender: 'user',
-      text: inputText,
+      text: promptText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     
@@ -42,16 +44,25 @@ const ChatbotSlideover = ({ isOpen, onClose }) => {
     setInputText('');
     setIsTyping(true);
 
-    // Mock Volty Response
-    setTimeout(() => {
-      setIsTyping(false);
+    try {
+      const response = await aiService.sendMessage(promptText);
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         sender: 'volty',
-        text: 'Anladım. İsteğinizi algoritmama işliyorum. Enerji bütçeniz güvende!',
+        text: response.reply || 'Enerji asistanınız şu an yanıt veremiyor.',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }]);
-    }, 1500);
+    } catch (error) {
+      console.error("AI Chatbot hatası:", error);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        sender: 'volty',
+        text: 'Üzgünüm, şu an sunucu ile iletişim kurulurken bir sorun oluştu. Lütfen tekrar deneyin.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (
