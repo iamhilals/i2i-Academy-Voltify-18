@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Zap, Cpu, Save, Search } from 'lucide-react';
+import { X, Zap, Cpu, Save, Search, Sparkles } from 'lucide-react';
 import { homeService } from '../services/homeService';
 
 const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }) => {
@@ -37,7 +37,18 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
     }
   }, [roomLayout, availableRooms]);
 
-  // Pre-defined fixed list. We use state so we can add to it if the user types something new.
+  // Pre-defined quick preset chips for popular appliances
+  const quickPresets = [
+    { name: 'Buzdolabı', category: 'sogutucu', limit: 350, icon: '❄️' },
+    { name: 'Bulaşık Makinesi', category: 'beyazesya', limit: 1800, icon: '🍽️' },
+    { name: 'Su Isıtıcı (Kettle)', category: 'mutfak', limit: 2200, icon: '☕' },
+    { name: 'Televizyon', category: 'elektronik', limit: 400, icon: '📺' },
+    { name: 'Klima', category: 'iklimlendirme', limit: 2500, icon: '❄️' },
+    { name: 'Çamaşır Makinesi', category: 'beyazesya', limit: 2200, icon: '🧺' },
+    { name: 'Ankastre Fırın', category: 'mutfak', limit: 2400, icon: '🍳' },
+  ];
+
+  // Pre-defined fixed list.
   const [deviceList, setDeviceList] = useState([
     'Akıllı Ampul',
     'Akıllı Priz',
@@ -82,7 +93,25 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
     'Ütü'
   ]);
 
-  // Filter the list based on user input (case-insensitive and ignores Turkish characters properly if possible)
+  // Helper function to estimate category & safe limit based on device name
+  const getEstimatedLimitAndCategory = (nameStr) => {
+    const name = nameStr.toLocaleLowerCase('tr-TR');
+    if (name.includes('klima')) return { limit: 2500, category: 'iklimlendirme' };
+    if (name.includes('çamaşır')) return { limit: 2200, category: 'beyazesya' };
+    if (name.includes('bulaşık')) return { limit: 1800, category: 'beyazesya' };
+    if (name.includes('fırın')) return { limit: 2400, category: 'mutfak' };
+    if (name.includes('süpürge')) return { limit: 1500, category: 'kucuk_evaletleri' };
+    if (name.includes('ütü')) return { limit: 2400, category: 'kucuk_evaletleri' };
+    if (name.includes('buzdolabı')) return { limit: 350, category: 'sogutucu' };
+    if (name.includes('televizyon') || name.includes('tv')) return { limit: 400, category: 'elektronik' };
+    if (name.includes('bilgisayar') || name.includes('laptop')) return { limit: 600, category: 'bilisim' };
+    if (name.includes('kombi')) return { limit: 150, category: 'iklimlendirme' };
+    if (name.includes('aydınlatma') || name.includes('ampul')) return { limit: 60, category: 'aydinlatma' };
+    if (name.includes('kettle') || name.includes('su ısıtıcı')) return { limit: 2200, category: 'mutfak' };
+    return { limit: 1500, category: 'elektronik' };
+  };
+
+  // Filter the list based on user input
   const filteredDevices = deviceList.filter(device => 
     device.toLocaleLowerCase('tr-TR').startsWith(deviceName.toLocaleLowerCase('tr-TR'))
   );
@@ -97,6 +126,36 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleApplyPreset = (preset) => {
+    setDeviceName(preset.name);
+    setCategory(preset.category);
+    setSafeLimit(preset.limit.toString());
+    setShowDropdown(false);
+  };
+
+  const handleSelectDevice = (name) => {
+    setDeviceName(name);
+    setShowDropdown(false);
+    const est = getEstimatedLimitAndCategory(name);
+    setSafeLimit(est.limit.toString());
+    setCategory(est.category);
+  };
+
+  const handleNameChange = (e) => {
+    const val = e.target.value;
+    setDeviceName(val);
+    setShowDropdown(true);
+    if (val.trim().length >= 3) {
+      const est = getEstimatedLimitAndCategory(val);
+      if (!safeLimit || safeLimit === '1000') {
+        setSafeLimit(est.limit.toString());
+      }
+      if (!category) {
+        setCategory(est.category);
+      }
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -117,40 +176,38 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
         'elektrikli_arac': 'Elektronik'
       };
 
+      const finalLimit = parseFloat(safeLimit) || 1500.0;
+
       const payload = {
         name: deviceName.trim(),
-        safePowerLimit: parseFloat(safeLimit) || 1000.0,
+        safePowerLimit: finalLimit,
         room: selectedRoom,
         type: categoryMap[category] || 'Elektronik'
       };
 
       let registeredAppliance = null;
       if (homeId) {
-        // Real API call
         const updatedHome = await homeService.addAppliance(homeId, payload);
         if (updatedHome && Array.isArray(updatedHome.appliances)) {
-          // Find the last matching appliance in the list as the registered one
           registeredAppliance = updatedHome.appliances.find(
             app => app.name === payload.name && app.room === payload.room
           ) || updatedHome.appliances[updatedHome.appliances.length - 1];
         }
       }
 
-      // Local fallback if no homeId or API fails
       if (!registeredAppliance) {
         registeredAppliance = {
           id: Date.now(),
           name: payload.name,
           type: payload.type,
           room: payload.room,
-          currentWattage: Math.floor(Math.random() * (parseInt(safeLimit) * 0.6 || 200)) + 10,
-          maxSafeWattage: parseInt(safeLimit) || 1000,
+          currentWattage: Math.floor(Math.random() * (finalLimit * 0.6)) + 20,
+          maxSafeWattage: finalLimit,
           isAnomalous: false,
           image: category === 'sogutucu' ? '/fridge/fridge_mock.png' : '/washer/washer_mock.png'
         };
       }
 
-      // Save room mapping in localStorage as backup
       if (registeredAppliance && registeredAppliance.id) {
         localStorage.setItem(`voltify_device_room_${registeredAppliance.id}`, selectedRoom);
       }
@@ -159,12 +216,11 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
         onAddDevice(registeredAppliance);
       }
 
-      // If the user typed a completely new device name, add it to our list for next time
       if (deviceName.trim() !== '' && !deviceList.some(d => d.toLocaleLowerCase('tr-TR') === deviceName.toLocaleLowerCase('tr-TR'))) {
         setDeviceList(prev => [...prev, deviceName.trim()].sort());
       }
 
-      setDeviceName(''); // reset for next time
+      setDeviceName('');
       setCategory('');
       setBrand('');
       setSafeLimit('');
@@ -174,32 +230,6 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // Helper function to simulate AI database for safe limits
-  const getEstimatedLimit = (deviceName) => {
-    const name = deviceName.toLocaleLowerCase('tr-TR');
-    if (name.includes('klima')) return 2500;
-    if (name.includes('çamaşır makinesi')) return 2200;
-    if (name.includes('fırın')) return 2000;
-    if (name.includes('bulaşık')) return 1800;
-    if (name.includes('süpürge')) return 1500;
-    if (name.includes('ütü')) return 2400;
-    if (name.includes('buzdolabı')) return 350;
-    if (name.includes('televizyon')) return 400;
-    if (name.includes('bilgisayar')) return 600;
-    if (name.includes('kombi')) return 150;
-    if (name.includes('aydınlatma') || name.includes('ampul')) return 60;
-    if (name.includes('şarj')) return 3000; // EV şarj vs
-    return 1000; // Default fallback
-  };
-
-  const handleSelectDevice = (name) => {
-    setDeviceName(name);
-    setShowDropdown(false);
-    
-    // Auto-fill the safe limit using our simulated AI logic
-    setSafeLimit(getEstimatedLimit(name).toString());
   };
 
   return (
@@ -214,42 +244,61 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
 
       {/* Slide-over Panel */}
       <div 
-        className={`fixed top-0 right-0 h-full w-full max-w-md bg-white z-[200] shadow-2xl transition-transform duration-500 transform flex flex-col ${
+        className={`fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-[#1E271F] z-[200] shadow-2xl transition-transform duration-500 transform flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-emerald-950/30">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center text-white">
+            <div className="w-10 h-10 bg-gray-900 dark:bg-emerald-800 rounded-xl flex items-center justify-center text-white">
               <Cpu className="w-5 h-5" />
             </div>
-            <h2 className="text-xl font-black text-gray-900">Yeni Cihaz Ekle</h2>
+            <h2 className="text-xl font-black text-gray-900 dark:text-white">Yeni Cihaz Ekle</h2>
           </div>
           <button 
             onClick={onClose}
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-emerald-950/40 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <form id="add-device-form" onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+
+          {/* Quick Preset Buttons (Tek Tıkla Doldurma) */}
+          <div>
+            <label className="text-xs font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#4C811F]" /> Hızlı Seçim (Tek Tıkla Limit Atama)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {quickPresets.map((preset, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleApplyPreset(preset)}
+                  className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-emerald-950/40 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 border border-gray-200 dark:border-emerald-900/40 text-xs font-bold text-gray-700 dark:text-gray-300 transition-all flex items-center gap-1.5"
+                >
+                  <span>{preset.icon}</span>
+                  <span>{preset.name}</span>
+                  <span className="text-[10px] text-[#4C811F] font-black bg-emerald-100 dark:bg-emerald-950 px-1.5 py-0.5 rounded-md">{preset.limit}W</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <form id="add-device-form" onSubmit={handleSubmit} className="space-y-5">
             
             {/* Autocomplete Input */}
             <div className="space-y-1.5 relative" ref={dropdownRef}>
-              <label className="text-sm font-bold text-gray-700">Cihaz Adı</label>
+              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Cihaz Adı</label>
               <div className="relative">
                 <input 
                   type="text" 
                   value={deviceName}
-                  onChange={(e) => {
-                    setDeviceName(e.target.value);
-                    setShowDropdown(true);
-                  }}
+                  onChange={handleNameChange}
                   onFocus={() => setShowDropdown(true)}
-                  placeholder="Örn: Akıllı Süpürge, Salondaki Klima..." 
-                  className="w-full px-4 py-3 pl-10 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-medium text-gray-900"
+                  placeholder="Örn: Bulaşık Makinesi, Salondaki Klima..." 
+                  className="w-full px-4 py-3 pl-10 rounded-xl bg-gray-50 dark:bg-[#182119] border-2 border-gray-100 dark:border-emerald-950/40 focus:border-[#4C811F] focus:bg-white dark:focus:bg-[#182119] outline-none transition-all font-medium text-gray-900 dark:text-white"
                   required
                 />
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -257,20 +306,20 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
               
               {/* Dropdown Menu */}
               {showDropdown && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-[#1E271F] border border-gray-100 dark:border-emerald-950/40 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                   {filteredDevices.length > 0 ? (
                     filteredDevices.map((device, index) => (
                       <div 
                         key={index}
                         onClick={() => handleSelectDevice(device)}
-                        className="px-4 py-3 hover:bg-green-50 cursor-pointer text-sm font-medium text-gray-700 hover:text-[#4C811F] transition-colors border-b border-gray-50 last:border-none"
+                        className="px-4 py-3 hover:bg-green-50 dark:hover:bg-emerald-950/60 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-[#4C811F] transition-colors border-b border-gray-50 dark:border-emerald-950/20 last:border-none"
                       >
                         {device}
                       </div>
                     ))
                   ) : (
-                    <div className="px-4 py-3 text-sm font-medium text-gray-500 italic">
-                      "{deviceName}" bulunamadı. Kaydettiğinizde yeni cihaz olarak listeye eklenecektir.
+                    <div className="px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 italic">
+                      "{deviceName}" bulunamadı. Kaydettiğinizde yeni cihaz olarak eklenecektir.
                     </div>
                   )}
                 </div>
@@ -278,11 +327,11 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-gray-700">Kategori</label>
+              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Kategori</label>
               <select 
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-medium text-gray-900 appearance-none cursor-pointer" 
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#182119] border-2 border-gray-100 dark:border-emerald-950/40 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900 dark:text-white cursor-pointer" 
                 required
               >
                 <option value="">Kategori Seçin</option>
@@ -301,11 +350,11 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-gray-700">Bulunduğu Oda</label>
+              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Bulunduğu Oda</label>
               <select 
                 value={selectedRoom}
                 onChange={(e) => setSelectedRoom(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-bold text-gray-700 cursor-pointer" 
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#182119] border-2 border-gray-100 dark:border-emerald-950/40 focus:border-[#4C811F] outline-none transition-all font-bold text-gray-700 dark:text-gray-300 cursor-pointer" 
                 required
               >
                 {availableRooms.map((room, idx) => (
@@ -316,47 +365,53 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-gray-700">Marka / Model</label>
+                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Marka / Model</label>
                 <input 
                   type="text" 
                   value={brand}
                   onChange={(e) => setBrand(e.target.value)}
-                  placeholder="Örn: Dyson V15" 
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-medium text-gray-900"
+                  placeholder="Örn: Dyson, Bosch..." 
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#182119] border-2 border-gray-100 dark:border-emerald-950/40 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900 dark:text-white"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-gray-700">Güvenli Limit (W)</label>
+                <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center justify-between">
+                  <span>Güvenli Limit (W)</span>
+                </label>
                 <div className="relative">
                   <input 
                     type="number" 
                     value={safeLimit}
                     onChange={(e) => setSafeLimit(e.target.value)}
-                    placeholder="Örn: 2000" 
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-medium text-gray-900"
+                    placeholder="Örn: 1800" 
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#182119] border-2 border-gray-100 dark:border-emerald-950/40 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900 dark:text-white"
                     required
                   />
-                  <Zap className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Zap className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4C811F]" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-              <h4 className="text-blue-800 font-bold text-sm mb-1">Voltify AI Otonom Eşleşme</h4>
-              <p className="text-blue-600 text-xs font-medium leading-relaxed">
-                Cihazı kaydettiğinizde, Voltify Akıllı Tanıma sistemi kategorisine ve modeline uygun <strong>sabit cihaz görselini</strong> kütüphaneden otomatik olarak atayacak ve ideal enerji limitlerini optimize edecektir.
+            <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 leading-relaxed bg-gray-50 dark:bg-emerald-950/20 p-2.5 rounded-xl border border-gray-100 dark:border-emerald-950/30">
+              💡 <strong>Bilmiyor musunuz?</strong> Voltify AI seçtiğiniz cihaza göre ideal güvenli Watt limitini otomatik doldurur. Dilerseniz özelleştirebilirsiniz.
+            </p>
+
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4">
+              <h4 className="text-blue-800 dark:text-blue-300 font-bold text-sm mb-1">Voltify AI Otonom Eşleşme</h4>
+              <p className="text-blue-600 dark:text-blue-400 text-xs font-medium leading-relaxed">
+                Cihazı kaydettiğinizde, Voltify Akıllı Tanıma sistemi kategorisine ve modeline uygun <strong>sabit cihaz görselini</strong> kütüphaneden otomatik olarak atayacaktır.
               </p>
             </div>
 
           </form>
         </div>
 
-        <div className="p-6 border-t border-gray-100 bg-gray-50/50">
+        <div className="p-6 border-t border-gray-100 dark:border-emerald-950/30 bg-gray-50/50 dark:bg-[#182119]">
           <button 
             type="submit" 
             form="add-device-form"
             disabled={isSubmitting}
-            className="w-full py-4 bg-gray-900 hover:bg-black text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl shadow-gray-900/20"
+            className="w-full py-4 bg-gray-900 dark:bg-emerald-800 hover:bg-black text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl shadow-gray-900/20"
           >
             {isSubmitting ? (
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
