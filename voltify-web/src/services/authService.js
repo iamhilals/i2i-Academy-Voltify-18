@@ -14,8 +14,8 @@ export const authService = {
     return response.data;
   },
 
-  async register(username, email, password) {
-    const response = await API.post('/api/auth/register', { username, email, password });
+  async register(firstName, lastName, username, email, phoneNumber, password) {
+    const response = await API.post('/api/auth/register', { firstName, lastName, username, email, phoneNumber, password });
     if (response.data && response.data.token) {
       localStorage.setItem('voltify_token', response.data.token);
       localStorage.setItem('voltify_user', JSON.stringify({

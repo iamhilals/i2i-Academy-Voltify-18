@@ -17,11 +17,13 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final EcoPetService ecoPetService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, EcoPetService ecoPetService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.ecoPetService = ecoPetService;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -49,6 +51,9 @@ public class AuthService {
 
         // 5. Veritabanına kaydet
         User savedUser = userRepository.save(user);
+
+        // Eco-Pet: VoltBot oluşturma
+        ecoPetService.getOrCreatePet(savedUser);
 
         // 6. Token üret ve cevap olarak dön
         String token = jwtUtil.generateToken(savedUser.getEmail());

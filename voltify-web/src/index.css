@@ -13,3 +13,56 @@ body {
   background-color: #f7faf9;
   color: #181c1c;
 }
+
+/* Global Dark Mode Overrides for Dim/Cozy Green Theme */
+.dark body {
+  background-color: #181F19 !important;
+  color: #E5E7EB !important;
+}
+
+.dark .bg-white {
+  background-color: #1E271F !important;
+}
+
+.dark .text-gray-900,
+.dark .text-gray-800 {
+  color: #F3F4F6 !important;
+}
+
+.dark .text-gray-500,
+.dark .text-gray-600 {
+  color: #9CA3AF !important;
+}
+
+.dark .text-gray-400 {
+  color: #6B7280 !important;
+}
+
+.dark .border-gray-100,
+.dark .border-gray-200 {
+  border-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background-color: #181F19 !important;
+}
+
+/* Charts / SVG Graphs text color overrides inside dark mode */
+.dark svg text {
+  fill: #9CA3AF !important;
+}
+
+.dark svg line,
+.dark svg path.domain {
+  stroke: rgba(16, 185, 129, 0.15) !important;
+}
+
+/* Input fields overrides */
+.dark input, 
+.dark select, 
+.dark textarea {
+  background-color: #181F19 !important;
+  color: #F3F4F6 !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}

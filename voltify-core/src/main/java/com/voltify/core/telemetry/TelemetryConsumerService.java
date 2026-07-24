@@ -11,6 +11,7 @@ import com.voltify.core.entity.EventLog;
 import com.voltify.core.repository.ApplianceRepository;
 import com.voltify.core.repository.EventLogRepository;
 import com.voltify.core.service.AlertNotificationService;
+import com.voltify.core.service.EcoPetService;
 import com.voltify.core.service.IgniteService;
 import com.voltify.core.service.TariffEngineService;
 
@@ -25,17 +26,20 @@ public class TelemetryConsumerService {
     private final ApplianceRepository applianceRepository;
     private final EventLogRepository eventLogRepository;
     private final AlertNotificationService alertNotificationService;
+    private final EcoPetService ecoPetService;
 
     public TelemetryConsumerService(TariffEngineService tariffEngineService,
                                      IgniteService igniteService,
                                      ApplianceRepository applianceRepository,
                                      EventLogRepository eventLogRepository,
-                                     AlertNotificationService alertNotificationService) {
+                                     AlertNotificationService alertNotificationService,
+                                     EcoPetService ecoPetService) {
         this.tariffEngineService = tariffEngineService;
         this.igniteService = igniteService;
         this.applianceRepository = applianceRepository;
         this.eventLogRepository = eventLogRepository;
         this.alertNotificationService = alertNotificationService;
+        this.ecoPetService = ecoPetService;
     }
 
     @KafkaListener(topics = "appliance-telemetry-topic", groupId = "voltify-telemetry-group")
@@ -79,6 +83,11 @@ public class TelemetryConsumerService {
                 System.out.println("🔥 ANOMALY: " + appliance.getName()
                         + " (id=" + applianceId + ") - 3 consecutive breaches");
                 alertNotificationService.notifyApplianceAnomaly(appliance.getHome(), appliance.getName(), watt, safeLimit);
+
+                // Eco-Pet Anomali Cezası Uygulama
+                if (appliance.getHome().getOwner() != null) {
+                    ecoPetService.applyAnomalyPenalty(appliance.getHome().getOwner().getId(), 10);
+                }
 
                 // Sayacı çok büyük bir sayıya çıkar ki tekrar 3'e ulaşamasın.
                 // Cihaz normale döner de sayaç sıfırlanırsa (else bloğunda), tekrar 3'e ulaşabilir - bu zaten yeni bir olaydır.

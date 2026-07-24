@@ -55,6 +55,7 @@ const HomeDetail = () => {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
   const [homeState, setHomeState] = useState(null);
+  const [appliances, setAppliances] = useState(mockAppliances);
 
   useEffect(() => {
     async function fetchDetails() {
@@ -99,7 +100,7 @@ const HomeDetail = () => {
         </button>
 
         <button 
-          onClick={() => navigate('/dashboard/meta-home', { state: { homeName: home.name, devices: mockAppliances } })}
+          onClick={() => navigate('/dashboard/meta-home', { state: { homeName: home.name, devices: appliances } })}
           className="absolute top-6 right-6 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 backdrop-blur-md rounded-xl flex items-center gap-2 text-white font-bold transition-colors shadow-xl shadow-purple-900/40 border border-white/10"
         >
           <Zap className="w-5 h-5" />
@@ -152,7 +153,7 @@ const HomeDetail = () => {
                 <h3 className="text-lg font-bold text-gray-900">Kayıtlı Cihazlar</h3>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-[#4C811F] bg-green-50 px-3 py-1 rounded-full">{mockAppliances.length} Cihaz</span>
+                <span className="text-sm font-bold text-[#4C811F] bg-green-50 px-3 py-1 rounded-full">{appliances.length} Cihaz</span>
                 <button 
                   onClick={() => setIsAddDeviceOpen(true)}
                   className="w-8 h-8 flex items-center justify-center bg-gray-900 hover:bg-gray-800 text-white rounded-full shadow-sm transition-colors" 
@@ -164,7 +165,7 @@ const HomeDetail = () => {
             </div>
             
             <div className="space-y-4">
-              {mockAppliances.map((app) => (
+              {appliances.map((app) => (
                 <div 
                   key={app.id} 
                   onClick={() => setSelectedDevice(app)}
@@ -331,6 +332,9 @@ const HomeDetail = () => {
       <AddDeviceSlideover 
         isOpen={isAddDeviceOpen} 
         onClose={() => setIsAddDeviceOpen(false)} 
+        onAddDevice={(newDevice) => {
+          setAppliances(prev => [...prev, newDevice]);
+        }}
       />
     </div>
   );

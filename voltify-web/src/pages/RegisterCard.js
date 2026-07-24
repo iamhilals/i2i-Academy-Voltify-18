@@ -151,7 +151,7 @@ export default function RegisterCard({ isDark, onGoLogin }) {
 
     setLoading(true);
     try {
-      await authService.register(username, email, password);
+      await authService.register(firstName, lastName, username, email, phone, password);
       setLoading(false);
       navigate('/dashboard');
     } catch (err) {

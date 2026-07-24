@@ -285,6 +285,10 @@ export default function AuthLayout({ mode }) {
       {/* UÇAN RENKLİ KELEBEKLER (FLYING BUTTERFLIES) */}
       <AnimatedButterflies />
 
+      {/* Çay İçen Kod Yapımı Animasyonlu İnsan Figürü */}
+      <ManWithTea isDark={isDark} />
+
+
       {/* PULL CHAIN NIGHT LAMP (GECE LAMBASI İPLİ TOGGLE) */}
       <PullChainLamp isDark={isDark} onToggle={() => setIsDark(!isDark)} />
 
@@ -666,3 +670,119 @@ function AnimatedButterflies() {
     </div>
   );
 }
+
+/* ---- KODDAN ÜRETİLEN ANIMASYONLU İNSAN FİGÜRÜ (ÇAYLI MAN) ---- */
+function ManWithTea({ isDark }) {
+  const [x, setX] = useState(-150);
+  const [legPhase, setLegPhase] = useState(0);
+  const posRef = useRef(-150);
+  const isDarkRef = useRef(isDark);
+
+  useEffect(() => {
+    isDarkRef.current = isDark;
+  }, [isDark]);
+
+  useEffect(() => {
+    let animId;
+    let lastTime = performance.now();
+
+    const animate = (now) => {
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+
+      // Koyu modda ekranın sağına kaçıp çıkar, aydınlık modda soldan gelip 8vw'de durup çayını yudumlar
+      const targetX = isDarkRef.current ? window.innerWidth + 200 : window.innerWidth * 0.08;
+
+      if (isDarkRef.current) {
+        if (posRef.current < targetX) {
+          posRef.current += 320 * dt; // Sağa hızlı koşu hızı
+          setLegPhase(p => (p + dt * 14) % (Math.PI * 2));
+        }
+      } else {
+        if (posRef.current < targetX) {
+          posRef.current += 160 * dt; // Soldan yumuşakça girme hızı
+          setLegPhase(p => (p + dt * 7) % (Math.PI * 2));
+        } else if (posRef.current > targetX + 15) {
+          posRef.current -= 160 * dt;
+          setLegPhase(p => (p + dt * 7) % (Math.PI * 2));
+        } else {
+          posRef.current = targetX;
+          setLegPhase(0); // Durunca ayakları sıfırla
+        }
+      }
+
+      setX(posRef.current);
+      animId = requestAnimationFrame(animate);
+    };
+
+    animId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
+  const isRunning = legPhase !== 0;
+
+  // Profil yürüme makas açısı
+  const swing = isRunning ? Math.sin(legPhase) * 22 : 0;
+  const leftLegRotation = swing;
+  const rightLegRotation = -swing;
+  const bounceY = isRunning ? Math.abs(Math.cos(legPhase)) * -5 : 0;
+  const targetX = isDark ? window.innerWidth + 200 : window.innerWidth * 0.08;
+  const isMovingRight = isDark || posRef.current < targetX;
+
+  return (
+    <div
+      className={`absolute bottom-[60px] z-10 pointer-events-none ${!isRunning ? 'animate-idle-breath' : ''}`}
+      style={{ 
+        left: x, 
+        width: 170, 
+        height: 220,
+        transformOrigin: 'bottom center'
+      }}
+    >
+      <style>{`
+        @keyframes idleBreath {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        .animate-idle-breath {
+          animation: idleBreath 3.5s infinite ease-in-out;
+          transform-origin: bottom center;
+        }
+      `}</style>
+      
+      {!isRunning ? (
+        // Dururken: Orijinal karşıya bakan transparan resmi göster (Sıfır hata, kesinlikle 2 bacak!)
+        <img 
+          src="/real_man_tea.png" 
+          alt="Çaylı Karakter" 
+          className="w-full h-full object-contain"
+          style={{ 
+            transform: isDark ? 'scaleX(1)' : 'scaleX(-1)' // Yön
+          }}
+        />
+      ) : (
+        // Yürürken/Koşarken: Orijinal yan (profil) transparan resmi bacakları oynamadan tek parça olarak kaydır (Sıfır hata, tertemiz akış!)
+        <img 
+          src="/real_man_profile.png" 
+          alt="Koşan Karakter" 
+          className="w-full h-full object-contain"
+          style={{ 
+            transform: `scaleX(${isMovingRight ? 1 : -1})` // Hareket yönüne göre yüzü döner (Görsel sağa bakıyor)
+          }}
+        />
+      )}
+      
+      {/* Konuşma balonu (Gündüz modunda ve durduğunda çıkar) */}
+      {!isDark && !isRunning && (
+        <motion.div 
+          className="absolute top-2 -right-24 text-[10px] bg-white text-emerald-800 px-3 py-1 rounded-xl shadow-lg border border-emerald-100 font-bold whitespace-nowrap"
+          initial={{ opacity: 0, scale: 0, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ delay: 0.5, type: 'spring' }}
+        >
+          Tavşan kanı çay hazır! ☕
+        </motion.div>
+      )}
+    </div>
+  );
+}

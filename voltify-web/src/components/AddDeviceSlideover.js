@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Zap, Cpu, Save, Search } from 'lucide-react';
 
-const AddDeviceSlideover = ({ isOpen, onClose }) => {
+const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Autocomplete states
   const [deviceName, setDeviceName] = useState('');
+  const [category, setCategory] = useState('');
+  const [brand, setBrand] = useState('');
   const [safeLimit, setSafeLimit] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -82,8 +84,40 @@ const AddDeviceSlideover = ({ isOpen, onClose }) => {
         setDeviceList(prev => [...prev, deviceName.trim()].sort());
       }
 
+      // Map select values to display category types
+      const categoryMap = {
+        'sogutucu': 'Soğutucu',
+        'iklimlendirme': 'İklimlendirme',
+        'beyazesya': 'Beyaz Eşya',
+        'mutfak': 'Beyaz Eşya',
+        'kucuk_evaletleri': 'Elektronik',
+        'elektronik': 'Elektronik',
+        'bilisim': 'Elektronik',
+        'aydinlatma': 'Elektronik',
+        'guvenlik': 'Elektronik',
+        'bahce': 'Elektronik',
+        'elektrikli_arac': 'Elektronik'
+      };
+
+      const newDevice = {
+        id: Date.now(),
+        name: deviceName.trim(),
+        type: categoryMap[category] || 'Elektronik',
+        currentWattage: Math.floor(Math.random() * (parseInt(safeLimit) * 0.6 || 200)) + 10,
+        maxSafeWattage: parseInt(safeLimit) || 1000,
+        isAnomalous: false,
+        image: category === 'sogutucu' ? '/fridge/fridge_mock.png' : '/washer/washer_mock.png'
+      };
+
+      if (onAddDevice) {
+        onAddDevice(newDevice);
+      }
+
       setIsSubmitting(false);
       setDeviceName(''); // reset for next time
+      setCategory('');
+      setBrand('');
+      setSafeLimit('');
       onClose();
     }, 1000);
   };
@@ -191,7 +225,12 @@ const AddDeviceSlideover = ({ isOpen, onClose }) => {
 
             <div className="space-y-1.5">
               <label className="text-sm font-bold text-gray-700">Kategori</label>
-              <select className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-medium text-gray-900 appearance-none cursor-pointer" required>
+              <select 
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-medium text-gray-900 appearance-none cursor-pointer" 
+                required
+              >
                 <option value="">Kategori Seçin</option>
                 <option value="sogutucu">Soğutucu & Dondurucu</option>
                 <option value="iklimlendirme">İklimlendirme (Klima, Isıtıcı)</option>
@@ -212,6 +251,8 @@ const AddDeviceSlideover = ({ isOpen, onClose }) => {
                 <label className="text-sm font-bold text-gray-700">Marka / Model</label>
                 <input 
                   type="text" 
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
                   placeholder="Örn: Dyson V15" 
                   className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-medium text-gray-900"
                 />
