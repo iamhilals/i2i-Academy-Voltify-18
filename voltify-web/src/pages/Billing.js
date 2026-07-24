@@ -1,16 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CreditCard, FileText, Download, CheckCircle2, AlertCircle, ArrowRight, Zap, ShieldCheck, MapPin, Filter } from 'lucide-react';
-
-const mockInvoices = [
-  { id: 'INV-2026-07-A', month: 'Temmuz 2026', amount: '850.00', status: 'unpaid', dueDate: '30.07.2026', usage: '210 kWh', home: 'Villa i2i' },
-  { id: 'INV-2026-07-B', month: 'Temmuz 2026', amount: '600.00', status: 'unpaid', dueDate: '30.07.2026', usage: '200 kWh', home: 'Merkez Ofis' },
-  { id: 'INV-2026-06-A', month: 'Haziran 2026', amount: '820.50', status: 'paid', dueDate: '30.06.2026', usage: '205 kWh', home: 'Villa i2i' },
-  { id: 'INV-2026-06-B', month: 'Haziran 2026', amount: '460.00', status: 'paid', dueDate: '30.06.2026', usage: '160 kWh', home: 'Merkez Ofis' },
-  { id: 'INV-2026-05-A', month: 'Mayıs 2026', amount: '750.75', status: 'paid', dueDate: '30.05.2026', usage: '190 kWh', home: 'Villa i2i' },
-  { id: 'INV-2026-05-C', month: 'Mayıs 2026', amount: '400.00', status: 'paid', dueDate: '30.05.2026', usage: '130 kWh', home: 'Bodrum Yazlık' },
-];
-
-const homes = ['Tümü', 'Villa i2i', 'Merkez Ofis', 'Bodrum Yazlık'];
+import { homeService } from '../services/homeService';
 
 const Billing = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -18,6 +8,40 @@ const Billing = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [selectedHome, setSelectedHome] = useState('Tümü');
+
+  const [userHomes, setUserHomes] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+
+  useEffect(() => {
+    async function loadBillingData() {
+      try {
+        const homes = await homeService.getMyHomes();
+        if (Array.isArray(homes)) {
+          setUserHomes(homes.map(h => h.name));
+          
+          const dynamicInvoices = [];
+          homes.forEach(h => {
+            if (h.billingLedger) {
+              dynamicInvoices.push({
+                id: `INV-2026-${h.id}`,
+                month: 'Temmuz 2026',
+                amount: h.billingLedger.currentBalance ? h.billingLedger.currentBalance.toFixed(2) : '0.00',
+                status: h.billingLedger.currentBalance > 0 ? 'unpaid' : 'paid',
+                dueDate: '30.07.2026',
+                usage: `${Math.round((h.billingLedger.accumulatedWatt / 1000) * 10) / 10} kW`,
+                home: h.name
+              });
+            }
+          });
+          setInvoices(dynamicInvoices);
+        }
+      } catch (err) {
+        console.warn('Could not load billing data:', err);
+        setInvoices([]);
+      }
+    }
+    loadBillingData();
+  }, []);
 
   const handlePayClick = (invoice) => {
     setSelectedInvoice(invoice);
@@ -37,15 +61,16 @@ const Billing = () => {
     }, 2000);
   };
 
+  const homeOptions = ['Tümü', ...userHomes];
+
   const filteredInvoices = selectedHome === 'Tümü' 
-    ? mockInvoices 
-    : mockInvoices.filter(i => i.home === selectedHome);
+    ? invoices 
+    : invoices.filter(i => i.home === selectedHome);
 
   const totalUnpaid = filteredInvoices
     .filter(i => i.status === 'unpaid')
-    .reduce((acc, curr) => acc + parseFloat(curr.amount.replace(',', '')), 0);
+    .reduce((acc, curr) => acc + parseFloat(curr.amount.replace(',', '') || 0), 0);
 
-  // Get the most urgent unpaid invoice for the selected context
   const nextInvoice = filteredInvoices.find(i => i.status === 'unpaid');
 
   return (
@@ -64,23 +89,25 @@ const Billing = () => {
         </div>
 
         {/* Home Filter Dropdown */}
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Filter className="w-4 h-4 text-gray-400" />
+        {userHomes.length > 0 && (
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <Filter className="w-4 h-4 text-gray-400" />
+            </div>
+            <select 
+              value={selectedHome}
+              onChange={(e) => setSelectedHome(e.target.value)}
+              className="pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 shadow-sm focus:outline-none focus:border-indigo-500 transition-colors appearance-none cursor-pointer"
+            >
+              {homeOptions.map(home => (
+                <option key={home} value={home}>{home}</option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
           </div>
-          <select 
-            value={selectedHome}
-            onChange={(e) => setSelectedHome(e.target.value)}
-            className="pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 shadow-sm focus:outline-none focus:border-indigo-500 transition-colors appearance-none cursor-pointer"
-          >
-            {homes.map(home => (
-              <option key={home} value={home}>{home}</option>
-            ))}
-          </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Main Grid */}
@@ -89,7 +116,6 @@ const Billing = () => {
         {/* Left Column: Balance Card */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-gray-900/20">
-            {/* Background pattern */}
             <div className="absolute -right-10 -top-10 opacity-10">
               <CreditCard className="w-48 h-48 transform rotate-12" />
             </div>
@@ -123,7 +149,6 @@ const Billing = () => {
             </div>
           </div>
 
-          {/* Quick Stats */}
           <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center">
@@ -148,7 +173,7 @@ const Billing = () => {
             
             <div className="divide-y divide-gray-100">
               {filteredInvoices.length === 0 ? (
-                <div className="p-8 text-center text-gray-500 font-medium">Bu lokasyon için henüz fatura bulunmuyor.</div>
+                <div className="p-12 text-center text-gray-500 font-medium">Bu lokasyon için henüz fatura kaydı bulunmuyor.</div>
               ) : (
                 filteredInvoices.map((invoice) => (
                   <div key={invoice.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors group">
@@ -211,7 +236,7 @@ const Billing = () => {
 
       </div>
 
-      {/* Payment Modal (Sahte Ödeme Ekranı) */}
+      {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !isProcessing && setShowPaymentModal(false)} />
@@ -281,7 +306,6 @@ const Billing = () => {
   );
 };
 
-// Helper for X icon in modal
 const X = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
 );

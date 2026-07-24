@@ -1,30 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Server, Activity, AlertTriangle, Power, Zap, MapPin, Search } from 'lucide-react';
-
-// Mock all devices from different homes
-const mockAllDevices = [
-  { id: 1, name: 'Buzdolabı', type: 'Soğutucu', location: 'Villa i2i - Mutfak', currentWattage: 150, status: 'active', isAnomalous: false, image: 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 2, name: 'Klima (Salon)', type: 'İklimlendirme', location: 'Villa i2i - Salon', currentWattage: 2200, status: 'active', isAnomalous: false, image: 'https://images.unsplash.com/photo-1598444983083-d9d300fdf220?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 3, name: 'Çamaşır Makinesi', type: 'Beyaz Eşya', location: 'Crimson Lodge - Banyo', currentWattage: 3100, status: 'active', isAnomalous: true, image: 'https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 4, name: 'Televizyon', type: 'Elektronik', location: 'Villa i2i - Salon', currentWattage: 120, status: 'standby', isAnomalous: false, image: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 5, name: 'Oyun Konsolu', type: 'Elektronik', location: 'Villa i2i - Salon', currentWattage: 15, status: 'standby', isAnomalous: false, image: 'https://images.unsplash.com/photo-1605901309584-818e25960b8f?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 6, name: 'Kombi', type: 'İklimlendirme', location: 'Eco Habitat - Bodrum', currentWattage: 0, status: 'offline', isAnomalous: false, image: 'https://images.unsplash.com/photo-1596756812836-979927b2354c?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 7, name: 'Klima (Yatak Odası)', type: 'İklimlendirme', location: 'Eco Habitat - Yatak Odası', currentWattage: 0, status: 'offline', isAnomalous: false, image: 'https://images.unsplash.com/photo-1598444983083-d9d300fdf220?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 8, name: 'Robot Süpürge', type: 'Küçük Ev Aleti', location: 'Crimson Lodge - Koridor', currentWattage: 45, status: 'charging', isAnomalous: false, image: 'https://images.unsplash.com/photo-1589824783837-6169889cb205?auto=format&fit=crop&q=80&w=150&h=150' },
-];
+import { homeService } from '../services/homeService';
 
 const Devices = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Local state to simulate toggling devices
-  const [devices, setDevices] = useState(mockAllDevices);
+  const [devices, setDevices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadDevices = async () => {
+    setIsLoading(true);
+    try {
+      const homes = await homeService.getMyHomes();
+      if (Array.isArray(homes) && homes.length > 0) {
+        const allAppliances = [];
+        homes.forEach(h => {
+          if (Array.isArray(h.appliances)) {
+            h.appliances.forEach(a => {
+              allAppliances.push({
+                id: a.id,
+                name: a.name,
+                type: a.type || 'Elektronik',
+                location: `${h.name} - ${a.room || 'Salon'}`,
+                currentWattage: a.currentWattage || 0,
+                status: a.currentWattage > 0 ? 'active' : 'standby',
+                isAnomalous: a.isAnomalous || false,
+                image: a.image || 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?auto=format&fit=crop&q=80&w=150&h=150'
+              });
+            });
+          }
+        });
+        setDevices(allAppliances);
+      } else {
+        setDevices([]);
+      }
+    } catch (err) {
+      console.warn('Could not load user devices from backend:', err);
+      setDevices([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDevices();
+  }, []);
 
   const toggleDeviceStatus = (id) => {
     setDevices(devices.map(dev => {
       if (dev.id === id) {
         if (dev.status === 'active') return { ...dev, status: 'standby', currentWattage: 10, isAnomalous: false };
-        if (dev.status === 'standby' || dev.status === 'offline') return { ...dev, status: 'active', currentWattage: Math.floor(Math.random() * 2000) + 100 };
+        if (dev.status === 'standby' || dev.status === 'offline') return { ...dev, status: 'active', currentWattage: Math.floor(Math.random() * 200) + 100 };
       }
       return dev;
     }));
@@ -67,13 +93,15 @@ const Devices = () => {
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Toplam Çekim</p>
             <p className="text-2xl font-black text-gray-900">{(totalWattage / 1000).toFixed(1)} <span className="text-sm font-bold text-gray-400">kW</span></p>
           </div>
-          <button 
-            onClick={turnOffAllStandby}
-            className="px-5 py-3 bg-[#4C811F] hover:bg-green-700 text-white font-bold rounded-2xl shadow-lg shadow-green-900/10 transition-colors flex items-center gap-2"
-          >
-            <Power className="w-5 h-5" />
-            Açık Unutulanları Kapat
-          </button>
+          {devices.length > 0 && (
+            <button 
+              onClick={turnOffAllStandby}
+              className="px-5 py-3 bg-[#4C811F] hover:bg-green-700 text-white font-bold rounded-2xl shadow-lg shadow-green-900/10 transition-colors flex items-center gap-2"
+            >
+              <Power className="w-5 h-5" />
+              Açık Unutulanları Kapat
+            </button>
+          )}
         </div>
       </div>
 
@@ -126,16 +154,18 @@ const Devices = () => {
         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-100 border-dashed">
           <Server className="w-16 h-16 text-gray-200 mb-4" />
           <h3 className="text-xl font-bold text-gray-900 mb-1">Cihaz Bulunamadı</h3>
-          <p className="text-gray-500 font-medium">Bu filtrelere veya aramaya uygun bir cihaz yok.</p>
+          <p className="text-gray-500 font-medium text-sm max-w-md text-center">
+            {devices.length === 0 
+              ? 'Henüz evlerinizde kayıtlı bir cihaz bulunmuyor. Evlerim sayfasından bir ev seçip ilk cihazınızı ekleyebilirsiniz.' 
+              : 'Bu filtrelere veya aramaya uygun bir cihaz bulunamadı.'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10">
           {filteredDevices.map(device => {
-            
             const isActive = device.status === 'active';
             const isStandby = device.status === 'standby' || device.status === 'charging';
             
-            // Status styling logic
             let borderClass = 'border-gray-100 hover:border-gray-200';
             let bgClass = 'bg-white';
             
@@ -186,11 +216,6 @@ const Devices = () => {
                     <div className={`w-24 h-24 rounded-2xl overflow-hidden shadow-sm border-4 transition-all duration-300 ${device.isAnomalous ? 'border-red-400 scale-105' : isActive ? 'border-green-100' : 'border-transparent grayscale opacity-70'}`}>
                       <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
                     </div>
-                    {isStandby && (
-                      <div className="absolute -top-3 -right-3 bg-white border border-gray-100 rounded-full w-9 h-9 flex items-center justify-center shadow-lg animate-bounce duration-1000">
-                        <ZzzIcon className="w-5 h-5 text-gray-800" />
-                      </div>
-                    )}
                   </div>
                   <h3 className="font-bold text-gray-900 text-lg text-center leading-tight mb-1">{device.name}</h3>
                   <p className="text-gray-500 font-medium text-xs flex items-center gap-1">
@@ -221,23 +246,5 @@ const Devices = () => {
     </div>
   );
 };
-
-// Custom Zzz Icon matching the design
-const ZzzIcon = ({ className }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2.5" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <path d="M4 17h5l-5 6h5" />
-    <path d="M10 9h6l-6 7h6" />
-    <path d="M17 2h5l-5 6h5" />
-  </svg>
-);
 
 export default Devices;
