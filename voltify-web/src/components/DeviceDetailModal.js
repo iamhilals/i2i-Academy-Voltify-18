@@ -100,6 +100,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice, homeId }) 
       });
     }, 2000);
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, device?.id]);
 
   // Backend'den GERÇEK cihaz geçmişini çek
@@ -120,6 +121,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice, homeId }) 
       active = false;
       clearInterval(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, device?.id, range, homeId]);
 
   const chartData = useMemo(() => buildSeries(serverHistory, samples, range), [serverHistory, samples, range]);
