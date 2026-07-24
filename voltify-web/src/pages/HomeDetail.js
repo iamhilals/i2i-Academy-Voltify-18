@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Activity, AlertTriangle, TrendingUp, DollarSign, TurkishLira, PieChart as PieChartIcon, Zap } from 'lucide-react';
+import { ArrowLeft, Activity, AlertTriangle, TrendingUp, TurkishLira, PieChart as PieChartIcon, Zap, Plus } from 'lucide-react';
 import { 
-  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
@@ -10,44 +10,20 @@ import DeviceDetailModal from '../components/DeviceDetailModal';
 import AddDeviceSlideover from '../components/AddDeviceSlideover';
 import { homeService } from '../services/homeService';
 
-// Dummy historical data for the chart
-const dailyTrendData = [
-  { time: '00:00', consumption: 1.2 }, { time: '04:00', consumption: 0.8 },
-  { time: '08:00', consumption: 3.5 }, { time: '12:00', consumption: 4.2 },
-  { time: '16:00', consumption: 8.7 }, { time: '20:00', consumption: 6.1 },
-  { time: '24:00', consumption: 2.3 },
-];
-
-const weeklyCostData = [
-  { day: 'Pzt', cost: 45 }, { day: 'Sal', cost: 52 }, { day: 'Çar', cost: 38 },
-  { day: 'Per', cost: 65 }, { day: 'Cum', cost: 80 }, { day: 'Cmt', cost: 120 },
-  { day: 'Paz', cost: 105 },
-];
-
-const categoryData = [
-  { name: 'İklimlendirme', value: 45 },
-  { name: 'Beyaz Eşya', value: 25 },
-  { name: 'Aydınlatma', value: 15 },
-  { name: 'Elektronik', value: 15 },
-];
-const COLORS = ['#3B82F6', '#F97316', '#EAB308', '#8B5CF6'];
-
-// Dummy appliances data with IMAGES
-const mockAppliances = [
-  { id: 1, name: 'Buzdolabı', type: 'Soğutucu', currentWattage: 150, maxSafeWattage: 300, isAnomalous: false, image: 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 2, name: 'Klima (Salon)', type: 'İklimlendirme', currentWattage: 2200, maxSafeWattage: 2500, isAnomalous: false, image: 'https://images.unsplash.com/photo-1598444983083-d9d300fdf220?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 3, name: 'Çamaşır Makinesi', type: 'Beyaz Eşya', currentWattage: 3100, maxSafeWattage: 2000, isAnomalous: true, consecutiveBreaches: 4, image: 'https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 4, name: 'Televizyon', type: 'Elektronik', currentWattage: 120, maxSafeWattage: 400, isAnomalous: false, image: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&q=80&w=150&h=150' },
-];
-
 const mockHomeData = {
   id: 1,
   name: 'Villa i2i',
-  consumption: '1.2 kW',
-  status: 'Oktimal',
-  isCritical: false, // For demonstration, we can toggle this if needed
+  consumption: '0.0 kW',
+  currentBalance: 0,
+  budgetQuotaTry: 1500,
+  status: 'Optimal',
+  isCritical: false,
   image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=1200&h=400',
+  squareMeters: 120,
+  roomLayout: '2+1'
 };
+
+const COLORS = ['#3B82F6', '#F97316', '#EAB308', '#8B5CF6'];
 
 const HomeDetail = () => {
   const { id } = useParams();
@@ -55,19 +31,20 @@ const HomeDetail = () => {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
   const [homeState, setHomeState] = useState(null);
-  const [appliances, setAppliances] = useState(mockAppliances);
+  const [appliances, setAppliances] = useState([]);
 
   useEffect(() => {
     async function fetchDetails() {
       try {
         const statusData = await homeService.getHomeStatus(id);
         if (statusData) {
+          const rawWatt = statusData.accumulatedWatt || 0;
           setHomeState({
             id: statusData.id || parseInt(id),
             name: statusData.name || `Ev ${id}`,
-            consumption: statusData.accumulatedWatt 
-              ? `${Math.round((statusData.accumulatedWatt / 1000) * 10) / 10} kW`
-              : '1.2 kW',
+            consumption: `${(rawWatt / 1000).toFixed(1)} kW`,
+            currentBalance: statusData.currentBalance || 0,
+            budgetQuotaTry: statusData.budgetQuotaTry || 1500,
             status: statusData.isPenaltyActive ? 'Cezai Durum' : 'Optimal',
             isCritical: statusData.isPenaltyActive || false,
             image: mockHomeData.image,
@@ -76,10 +53,12 @@ const HomeDetail = () => {
           });
           if (Array.isArray(statusData.appliances)) {
             setAppliances(statusData.appliances);
+          } else {
+            setAppliances([]);
           }
         }
       } catch (err) {
-        console.warn('Could not fetch home status from backend, using fallback:', err);
+        console.warn('Could not fetch home status from backend, using default empty state:', err);
       }
     }
     if (id) {
@@ -87,15 +66,49 @@ const HomeDetail = () => {
     }
   }, [id]);
 
-  const isCritical = id === '2';
   const home = homeState || { 
     ...mockHomeData, 
     id: parseInt(id) || 1, 
-    isCritical, 
-    name: isCritical ? 'Crimson Lodge' : 'Villa i2i',
-    squareMeters: isCritical ? 100 : 120,
-    roomLayout: isCritical ? '1+1' : '2+1'
   };
+
+  // Dynamic Balance & Budget Percentage Calculations
+  const currentBalance = home.currentBalance || 0;
+  const budgetQuota = home.budgetQuotaTry || 1500;
+  const budgetPercentage = Math.min(100, Math.round((currentBalance / budgetQuota) * 100));
+
+  const formattedBalanceMajor = Math.floor(currentBalance).toLocaleString();
+  const formattedBalanceMinor = (currentBalance % 1).toFixed(2).substring(2);
+
+  // Dynamic Chart Data based on appliances
+  const totalDeviceWatt = appliances.reduce((acc, a) => acc + (a.currentWattage || 0), 0);
+  const dailyTrendData = [
+    { time: '00:00', consumption: (totalDeviceWatt * 0.0004).toFixed(1) },
+    { time: '04:00', consumption: (totalDeviceWatt * 0.0002).toFixed(1) },
+    { time: '08:00', consumption: (totalDeviceWatt * 0.0008).toFixed(1) },
+    { time: '12:00', consumption: (totalDeviceWatt * 0.0010).toFixed(1) },
+    { time: '16:00', consumption: (totalDeviceWatt * 0.0012).toFixed(1) },
+    { time: '20:00', consumption: (totalDeviceWatt * 0.0009).toFixed(1) },
+    { time: '24:00', consumption: (totalDeviceWatt * 0.0005).toFixed(1) },
+  ];
+
+  const weeklyCostData = [
+    { day: 'Pzt', cost: (currentBalance * 0.12).toFixed(1) },
+    { day: 'Sal', cost: (currentBalance * 0.14).toFixed(1) },
+    { day: 'Çar', cost: (currentBalance * 0.10).toFixed(1) },
+    { day: 'Per', cost: (currentBalance * 0.15).toFixed(1) },
+    { day: 'Cum', cost: (currentBalance * 0.18).toFixed(1) },
+    { day: 'Cmt', cost: (currentBalance * 0.20).toFixed(1) },
+    { day: 'Paz', cost: (currentBalance * 0.11).toFixed(1) },
+  ];
+
+  const categoryData = appliances.length > 0 ? [
+    { name: 'İklimlendirme', value: 45 },
+    { name: 'Beyaz Eşya', value: 25 },
+    { name: 'Aydınlatma', value: 15 },
+    { name: 'Elektronik', value: 15 },
+  ] : [
+    { name: 'Cihaz Bulunmuyor', value: 100 }
+  ];
 
   return (
     <div className="w-full flex flex-col animate-in fade-in zoom-in-95 duration-300">
@@ -136,7 +149,7 @@ const HomeDetail = () => {
           <div className="text-right">
             <p className="text-gray-300 text-sm font-bold uppercase tracking-wider mb-1">Anlık Tüketim</p>
             <p className={`text-4xl font-black ${home.isCritical ? 'text-red-400' : 'text-green-400'}`}>
-              {home.consumption}
+              {appliances.length > 0 ? home.consumption : '0.0 kW'}
             </p>
           </div>
         </div>
@@ -156,24 +169,23 @@ const HomeDetail = () => {
               <div>
                 <h4 className="text-red-800 font-bold text-lg mb-1">Voltify AI Uyarısı</h4>
                 <p className="text-red-600 font-medium text-sm leading-relaxed">
-                  Evdeki "Çamaşır Makinesi" son 4 döngüdür güvenli tüketim limitlerini aştı. 
-                  Lütfen cihazı kontrol edin!
+                  Güvenli tüketim limitleri veya kota aşıldı. Lütfen cihazlarınızı kontrol edin!
                 </p>
               </div>
             </div>
           )}
 
-          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+          <div className="bg-white dark:bg-[#1E271F] rounded-3xl p-6 border border-gray-100 dark:border-emerald-950/30 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Activity className="w-5 h-5 text-gray-400" />
-                <h3 className="text-lg font-bold text-gray-900">Kayıtlı Cihazlar</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Kayıtlı Cihazlar</h3>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-[#4C811F] bg-green-50 px-3 py-1 rounded-full">{appliances.length} Cihaz</span>
+                <span className="text-sm font-bold text-[#4C811F] bg-green-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full">{appliances.length} Cihaz</span>
                 <button 
                   onClick={() => setIsAddDeviceOpen(true)}
-                  className="w-8 h-8 flex items-center justify-center bg-gray-900 hover:bg-gray-800 text-white rounded-full shadow-sm transition-colors" 
+                  className="w-8 h-8 flex items-center justify-center bg-gray-900 dark:bg-emerald-800 hover:bg-black text-white rounded-full shadow-sm transition-colors" 
                   title="Yeni Cihaz Ekle"
                 >
                   <span className="text-lg font-bold">+</span>
@@ -181,57 +193,68 @@ const HomeDetail = () => {
               </div>
             </div>
             
-            <div className="space-y-4">
-              {appliances.map((app) => (
-                <div 
-                  key={app.id} 
-                  onClick={() => setSelectedDevice(app)}
-                  className={`p-3 rounded-2xl border transition-all flex flex-col gap-3 cursor-pointer hover:shadow-md ${
-                    app.isAnomalous 
-                      ? 'border-red-300 bg-red-50/30' 
-                      : 'border-gray-100 hover:border-gray-200'
-                  }`}
+            {appliances.length === 0 ? (
+              <div className="p-8 text-center bg-gray-50 dark:bg-[#182119] rounded-2xl border border-dashed border-gray-200 dark:border-emerald-950/40">
+                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">Bu evde henüz kayıtlı bir cihaz yok.</p>
+                <button 
+                  onClick={() => setIsAddDeviceOpen(true)}
+                  className="text-xs font-bold text-[#4C811F] hover:underline flex items-center gap-1 mx-auto"
                 >
-                  <div className="flex items-center gap-4">
-                    {/* Appliance Image instead of icon */}
-                    <div className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 shadow-sm border-2 ${app.isAnomalous ? 'border-red-400' : 'border-transparent'}`}>
-                      <img src={app.image} alt={app.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-bold text-gray-900 text-sm">{app.name}</h4>
-                          <div className="flex gap-2 items-center mt-0.5">
-                            <span className="text-[10px] font-black uppercase text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">{app.type}</span>
-                            <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                              {app.room || localStorage.getItem(`voltify_device_room_${app.id}`) || 'Salon'}
-                            </span>
+                  <Plus className="w-3.5 h-3.5" /> İlk Cihazınızı Ekleyin
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {appliances.map((app) => (
+                  <div 
+                    key={app.id} 
+                    onClick={() => setSelectedDevice(app)}
+                    className={`p-3 rounded-2xl border transition-all flex flex-col gap-3 cursor-pointer hover:shadow-md ${
+                      app.isAnomalous 
+                        ? 'border-red-300 bg-red-50/30' 
+                        : 'border-gray-100 dark:border-emerald-950/20 hover:border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 shadow-sm border-2 ${app.isAnomalous ? 'border-red-400' : 'border-transparent'}`}>
+                        <img src={app.image || 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?auto=format&fit=crop&q=80&w=150&h=150'} alt={app.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">{app.name}</h4>
+                            <div className="flex gap-2 items-center mt-0.5">
+                              <span className="text-[10px] font-black uppercase text-gray-500 bg-gray-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">{app.type || 'Akıllı Cihaz'}</span>
+                              <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
+                                {app.room || 'Salon'}
+                              </span>
+                            </div>
                           </div>
+                          {app.isAnomalous && (
+                            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                          )}
                         </div>
-                        {app.isAnomalous && (
-                          <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
-                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between text-[11px] font-bold mb-1 uppercase tracking-wider">
+                        <span className="text-gray-400">Canlı Çekim</span>
+                        <span className={app.isAnomalous ? 'text-red-600' : 'text-gray-700 dark:text-gray-300'}>
+                          {app.currentWattage || 0}W <span className="text-gray-400 font-medium">/ {app.maxSafeWattage || 2000}W</span>
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-100 dark:bg-emerald-950/30 h-2 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full ${app.isAnomalous ? 'bg-red-500' : 'bg-[#4C811F]'}`}
+                          style={{ width: `${Math.min(((app.currentWattage || 0) / (app.maxSafeWattage || 2000)) * 100, 100)}%` }}
+                        />
                       </div>
                     </div>
                   </div>
-                  
-                  <div>
-                    <div className="flex justify-between text-[11px] font-bold mb-1 uppercase tracking-wider">
-                      <span className="text-gray-400">Canlı Çekim</span>
-                      <span className={app.isAnomalous ? 'text-red-600' : 'text-gray-700'}>
-                        {app.currentWattage}W <span className="text-gray-400 font-medium">/ {app.maxSafeWattage}W</span>
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full ${app.isAnomalous ? 'bg-red-500' : 'bg-[#4C811F]'}`}
-                        style={{ width: `${Math.min((app.currentWattage / app.maxSafeWattage) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -240,34 +263,36 @@ const HomeDetail = () => {
           
           {/* Top Row: Mini Stat Cards */}
           <div className="grid grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-center">
+            <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm flex flex-col justify-center">
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                 <TurkishLira className="w-4 h-4" /> Birikimli Fatura
               </h4>
-              <p className="text-4xl font-black text-gray-900 mb-2">₺ 1,245<span className="text-xl text-gray-400">.50</span></p>
-              <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2">
-                <div className={`h-full rounded-full ${home.isCritical ? 'bg-red-500' : 'bg-orange-400'}`} style={{width: '83%'}}></div>
+              <p className="text-4xl font-black text-gray-900 dark:text-white mb-2">
+                ₺ {formattedBalanceMajor}<span className="text-xl text-gray-400">.{formattedBalanceMinor}</span>
+              </p>
+              <div className="w-full bg-gray-100 dark:bg-emerald-950/30 h-1.5 rounded-full mt-2">
+                <div className={`h-full rounded-full ${home.isCritical ? 'bg-red-500' : 'bg-orange-400'}`} style={{ width: `${budgetPercentage}%` }}></div>
               </div>
-              <p className="text-xs font-bold text-gray-500 mt-2 text-right">Bütçenin %83'ü</p>
+              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mt-2 text-right">Bütçenin %{budgetPercentage}'i</p>
             </div>
             
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-center">
+            <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm flex flex-col justify-center">
                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" /> Tasarruf Hedefi
               </h4>
-              <p className="text-4xl font-black text-[#4C811F] mb-2">% 12<span className="text-xl text-gray-400">.4</span></p>
-              <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2">
-                <div className="h-full rounded-full bg-[#4C811F]" style={{width: '60%'}}></div>
+              <p className="text-4xl font-black text-[#4C811F] mb-2">% {appliances.length > 0 ? '12.4' : '0.0'}</p>
+              <div className="w-full bg-gray-100 dark:bg-emerald-950/30 h-1.5 rounded-full mt-2">
+                <div className="h-full rounded-full bg-[#4C811F]" style={{ width: `${appliances.length > 0 ? 60 : 0}%` }}></div>
               </div>
-              <p className="text-xs font-bold text-gray-500 mt-2 text-right">Aylık hedefte ilerleme</p>
+              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mt-2 text-right">Aylık hedefte ilerleme</p>
             </div>
           </div>
 
           {/* Chart 1: Daily Trend */}
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm">
             <div className="flex items-center gap-2 mb-6">
               <Activity className="w-5 h-5 text-gray-400" />
-              <h3 className="text-lg font-bold text-gray-900">24 Saatlik Tüketim (kW)</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">24 Saatlik Tüketim (kW)</h3>
             </div>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -292,10 +317,10 @@ const HomeDetail = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Chart 2: Weekly Cost (Bar Chart) */}
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
                 <TurkishLira className="w-5 h-5 text-gray-400" />
-                <h3 className="text-lg font-bold text-gray-900">Haftalık Maliyet (₺)</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Haftalık Maliyet (₺)</h3>
               </div>
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -311,10 +336,10 @@ const HomeDetail = () => {
             </div>
 
             {/* Chart 3: Category Distribution (Pie Chart) */}
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
                 <PieChartIcon className="w-5 h-5 text-gray-400" />
-                <h3 className="text-lg font-bold text-gray-900">Tüketim Dağılımı</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Tüketim Dağılımı</h3>
               </div>
               <div className="h-48 w-full relative flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
@@ -327,12 +352,11 @@ const HomeDetail = () => {
                     <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }} />
                   </PieChart>
                 </ResponsiveContainer>
-                {/* Legend positioned manually to look good */}
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2">
                   {categoryData.map((entry, index) => (
                     <div key={entry.name} className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
-                      <span className="text-xs font-bold text-gray-600">{entry.name}</span>
+                      <span className="text-xs font-bold text-gray-600 dark:text-gray-300">{entry.name}</span>
                     </div>
                   ))}
                 </div>
