@@ -12,7 +12,7 @@ export const authService = {
       localStorage.setItem('voltify_token', response.data.token);
       const data = response.data;
       const existingUser = JSON.parse(localStorage.getItem('voltify_user') || '{}');
-      const uname = data.username || username || 'sude';
+      const uname = data.username || usernameOrEmail || 'sude';
       localStorage.setItem('voltify_user', JSON.stringify({
         ...existingUser,
         username: uname,
