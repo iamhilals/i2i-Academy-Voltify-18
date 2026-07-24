@@ -4,25 +4,28 @@ import jakarta.validation.constraints.NotBlank;
 
 public class LoginRequest {
 
-    // Kullanıcı bunun içine email VEYA username yazabilir
-    // Backward compatibility için 'email' alanı da destekleniyor
     private String identifier;
-
+    private String username;
     private String email;
 
     @NotBlank(message = "Password is required")
     private String password;
 
-    // Yardımcı: email veya identifier alanından hangisi doluysa onu döndür
     public String resolveIdentifier() {
         if (identifier != null && !identifier.isBlank()) {
             return identifier;
+        }
+        if (username != null && !username.isBlank()) {
+            return username;
         }
         return email;
     }
 
     public String getIdentifier() { return identifier; }
     public void setIdentifier(String identifier) { this.identifier = identifier; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }

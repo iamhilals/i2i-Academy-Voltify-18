@@ -179,8 +179,8 @@ export default function LoginCard({ isDark, onGoRegister }) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormField label="KULLANICI ADI" type="text" value={username} onChange={setUsername}
-            placeholder="Kullanıcı adınızı girin" isDark={isDark} icon="user" />
+          <FormField label="KULLANICI ADI VEYA E-POSTA" type="text" value={username} onChange={setUsername}
+            placeholder="Kullanıcı adı veya e-posta adresi" isDark={isDark} icon="user" />
           <FormField label="ŞİFRE" type="password" value={password} onChange={setPassword}
             placeholder="••••••••" isDark={isDark} icon="lock" isPassword={true} showPassword={showPassword} onTogglePassword={() => setShowPassword(!showPassword)} />
 
