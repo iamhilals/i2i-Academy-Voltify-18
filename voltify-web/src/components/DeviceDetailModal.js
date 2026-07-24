@@ -1,15 +1,46 @@
 import React from 'react';
-import { X, AlertTriangle, Zap, Activity, Clock, DollarSign, Power } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { X, AlertTriangle, Zap, Clock, DollarSign, Power } from 'lucide-react';
 
-// Mock chart data for the device
-const deviceChartData = [
-  { time: '08:00', wattage: 120 },
-  { time: '12:00', wattage: 150 },
-  { time: '16:00', wattage: 280 }, // spike
-  { time: '20:00', wattage: 140 },
-  { time: '24:00', wattage: 135 },
-];
+// Maps device name/type to a local public PNG image path
+const getDeviceLocalImage = (type, name) => {
+  const lower = (name || '').toLowerCase();
+  const lType = (type || '').toLowerCase();
+  
+  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu')) {
+    return '/fridge.png';
+  }
+  if (lower.includes('klima') || lower.includes(' ac') || lType.includes('iklimlendirme')) {
+    return '/ac.png';
+  }
+  if (lower.includes('fırın') || lower.includes('ocak') || lower.includes('ankastre') || lType.includes('ocak') || lType.includes('fırın') || lower.includes('stove') || lower.includes('oven')) {
+    return '/oven.png';
+  }
+  if (lower.includes('çamaşır') || lower.includes('washer') || lType.includes('çamaşır') || lower.includes('kurutucu') || lower.includes('dryer')) {
+    return '/washer.png';
+  }
+  if (lower.includes('bulaşık') || lower.includes('dishwasher') || lType.includes('bulaşık')) {
+    return '/dishwasher.png';
+  }
+  if (lower.includes('televizyon') || lower.includes(' tv') || lower.startsWith('tv') || (lType.includes('elektronik') && lower.includes('tv'))) {
+    return '/tv.png';
+  }
+  if (lower.includes('konsol') || lower.includes('oyun') || lower.includes('game') || lower.includes('playstation') || lower.includes('xbox')) {
+    return '/console.png';
+  }
+  if (lower.includes('süpürge') || lower.includes('vacuum') || lower.includes('robot')) {
+    return '/vacuum.png';
+  }
+  if (lower.includes('kombi') || lower.includes('ısıtıcı') || lower.includes('boiler')) {
+    return '/boiler.png';
+  }
+  if (lower.includes('priz') || lower.includes('plug')) {
+    return '/plug.png';
+  }
+  if (lower.includes('ampul') || lower.includes('lamba') || lower.includes('bulb') || lower.includes('aydınlatma')) {
+    return '/bulb.png';
+  }
+  return '/plug.png'; // default fallback
+};
 
 const DeviceDetailModal = ({ isOpen, onClose, device }) => {
   // isOpen false ise anında kaybolur, hiçbir şey render edilmez.
@@ -20,13 +51,13 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
       {/* Arka plan karartması */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose} // İsteğe bağlı: Arka plandaki siyahlığa tıklayınca da anında kapanır
+        onClick={onClose}
       />
       
-      {/* Modal Ana Kutusu (Ufak bir beliren animasyon eklendi: animate-in fade-in) */}
+      {/* Modal Ana Kutusu */}
       <div className="relative w-full max-w-6xl h-[85vh] flex items-center justify-center animate-in fade-in zoom-in-95 duration-200">
         
-        {/* Kapatma Çarpısı - Doğrudan onClose çağırır, hiç beklemez */}
+        {/* Kapatma Çarpısı */}
         <button 
           onClick={onClose}
           className="absolute top-0 right-0 z-50 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-colors"
@@ -36,21 +67,16 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
 
         <div className="flex flex-col md:flex-row w-full h-full items-center justify-center gap-6">
           
-          {/* Video Container (Bulaşık Makinesi) */}
-          <div className="relative w-[400px] h-[550px] shrink-0 flex items-center justify-center rounded-2xl overflow-hidden">
-            <video 
-              className="w-full h-full object-cover drop-shadow-2xl"
-              autoPlay 
-              loop 
-              muted 
-              playsInline
-            >
-              {/* Video yolunu kendi projene göre ayarlayabilirsin */}
-              <source src="/videos/fridge.mp4" type="video/mp4" />
-            </video>
+          {/* Correct Device Image Container */}
+          <div className="relative w-[400px] h-[550px] shrink-0 flex items-center justify-center rounded-2xl overflow-hidden bg-white/10 shadow-2xl">
+            <img 
+              src={getDeviceLocalImage(device?.type, device?.name)} 
+              alt={device?.name || 'Cihaz Görseli'} 
+              className="w-full h-full object-cover" 
+            />
           </div>
 
-          {/* Data Content (Veri Paneli - Anında görünür) */}
+          {/* Data Content */}
           <div className="flex-1 w-full max-w-3xl bg-white rounded-[2rem] p-8 shadow-2xl overflow-y-auto max-h-full">
             
             {/* Header */}
@@ -60,8 +86,8 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                   <Zap className="w-7 h-7 text-blue-500" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black text-gray-900">{device?.name || 'Bulaşık Makinesi'}</h2>
-                  <p className="text-gray-500 font-medium">{device?.type || 'Beyaz Eşya'} • Sistem Verileri</p>
+                  <h2 className="text-3xl font-black text-gray-900">{device?.name || 'Cihaz'}</h2>
+                  <p className="text-gray-500 font-medium">{device?.type || 'Sistem Verileri'}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -100,31 +126,6 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
               <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><DollarSign className="w-3 h-3"/> Tahmini Maliyet</p>
                 <p className="text-2xl font-black text-gray-900">₺4.20<span className="text-sm font-bold text-gray-400">/g</span></p>
-              </div>
-            </div>
-
-            {/* Chart Area */}
-            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm mb-8">
-              <div className="flex items-center gap-2 mb-6">
-                <Activity className="w-5 h-5 text-gray-400" />
-                <h3 className="font-bold text-gray-900">24 Saatlik Cihaz Tüketimi</h3>
-              </div>
-              <div className="h-48 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={deviceChartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorDevice" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={device?.isAnomalous ? '#EF4444' : '#3B82F6'} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={device?.isAnomalous ? '#EF4444' : '#3B82F6'} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 600 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 600 }} />
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} />
-                    <Area type="monotone" dataKey="wattage" stroke={device?.isAnomalous ? '#EF4444' : '#3B82F6'} strokeWidth={3} fillOpacity={1} fill="url(#colorDevice)" />
-                  </AreaChart>
-                </ResponsiveContainer>
               </div>
             </div>
 

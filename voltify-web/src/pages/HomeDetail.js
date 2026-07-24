@@ -25,6 +25,47 @@ const mockHomeData = {
 
 const COLORS = ['#3B82F6', '#F97316', '#EAB308', '#8B5CF6'];
 
+// Maps device name/type to a local public PNG image path
+const getDeviceLocalImage = (type, name) => {
+  const lower = (name || '').toLowerCase();
+  const lType = (type || '').toLowerCase();
+  
+  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu')) {
+    return '/fridge.png';
+  }
+  if (lower.includes('klima') || lower.includes(' ac') || lType.includes('iklimlendirme')) {
+    return '/ac.png';
+  }
+  if (lower.includes('fırın') || lower.includes('ocak') || lower.includes('ankastre') || lType.includes('ocak') || lType.includes('fırın') || lower.includes('stove') || lower.includes('oven')) {
+    return '/oven.png';
+  }
+  if (lower.includes('çamaşır') || lower.includes('washer') || lType.includes('çamaşır') || lower.includes('kurutucu') || lower.includes('dryer')) {
+    return '/washer.png';
+  }
+  if (lower.includes('bulaşık') || lower.includes('dishwasher') || lType.includes('bulaşık')) {
+    return '/dishwasher.png';
+  }
+  if (lower.includes('televizyon') || lower.includes(' tv') || lower.startsWith('tv') || (lType.includes('elektronik') && lower.includes('tv'))) {
+    return '/tv.png';
+  }
+  if (lower.includes('konsol') || lower.includes('oyun') || lower.includes('game') || lower.includes('playstation') || lower.includes('xbox')) {
+    return '/console.png';
+  }
+  if (lower.includes('süpürge') || lower.includes('vacuum') || lower.includes('robot')) {
+    return '/vacuum.png';
+  }
+  if (lower.includes('kombi') || lower.includes('ısıtıcı') || lower.includes('boiler')) {
+    return '/boiler.png';
+  }
+  if (lower.includes('priz') || lower.includes('plug')) {
+    return '/plug.png';
+  }
+  if (lower.includes('ampul') || lower.includes('lamba') || lower.includes('bulb') || lower.includes('aydınlatma')) {
+    return '/bulb.png';
+  }
+  return '/plug.png'; // default fallback
+};
+
 const HomeDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -111,7 +152,7 @@ const HomeDetail = () => {
   ];
 
   return (
-    <div className="w-full flex flex-col animate-in fade-in zoom-in-95 duration-300">
+    <div className="w-full flex flex-col">
       
       {/* Header (with Home Image Background) */}
       <div className="relative h-64 rounded-3xl shrink-0 overflow-hidden mb-8 shadow-sm">
@@ -209,15 +250,19 @@ const HomeDetail = () => {
                   <div 
                     key={app.id} 
                     onClick={() => setSelectedDevice(app)}
-                    className={`p-3 rounded-2xl border transition-all flex flex-col gap-3 cursor-pointer hover:shadow-md ${
+                    className={`p-3 rounded-2xl border flex flex-col gap-3 cursor-pointer ${
                       app.isAnomalous 
                         ? 'border-red-300 bg-red-50/30' 
-                        : 'border-gray-100 dark:border-emerald-950/20 hover:border-gray-200'
+                        : 'border-gray-100 dark:border-emerald-950/20 shadow-sm'
                     }`}
                   >
                     <div className="flex items-center gap-4">
                       <div className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 shadow-sm border-2 ${app.isAnomalous ? 'border-red-400' : 'border-transparent'}`}>
-                        <img src={app.image || 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?auto=format&fit=crop&q=80&w=150&h=150'} alt={app.name} className="w-full h-full object-cover" />
+                        <img 
+                          src={getDeviceLocalImage(app.type, app.name)} 
+                          alt={app.name} 
+                          className="w-full h-full object-cover" 
+                        />
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between items-start">

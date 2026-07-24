@@ -6,9 +6,41 @@ import { homeService } from '../services/homeService';
 const getDeviceLocalImage = (type, name) => {
   const lower = (name || '').toLowerCase();
   const lType = (type || '').toLowerCase();
-  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu'))
-    return '/fridge/1.png';
-  return null; // No local PNG available — will use emoji tile
+  
+  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu')) {
+    return '/fridge.png';
+  }
+  if (lower.includes('klima') || lower.includes(' ac') || lType.includes('iklimlendirme')) {
+    return '/ac.png';
+  }
+  if (lower.includes('fırın') || lower.includes('ocak') || lower.includes('ankastre') || lType.includes('ocak') || lType.includes('fırın') || lower.includes('stove') || lower.includes('oven')) {
+    return '/oven.png';
+  }
+  if (lower.includes('çamaşır') || lower.includes('washer') || lType.includes('çamaşır') || lower.includes('kurutucu') || lower.includes('dryer')) {
+    return '/washer.png';
+  }
+  if (lower.includes('bulaşık') || lower.includes('dishwasher') || lType.includes('bulaşık')) {
+    return '/dishwasher.png';
+  }
+  if (lower.includes('televizyon') || lower.includes(' tv') || lower.startsWith('tv') || (lType.includes('elektronik') && lower.includes('tv'))) {
+    return '/tv.png';
+  }
+  if (lower.includes('konsol') || lower.includes('oyun') || lower.includes('game') || lower.includes('playstation') || lower.includes('xbox')) {
+    return '/console.png';
+  }
+  if (lower.includes('süpürge') || lower.includes('vacuum') || lower.includes('robot')) {
+    return '/vacuum.png';
+  }
+  if (lower.includes('kombi') || lower.includes('ısıtıcı') || lower.includes('boiler')) {
+    return '/boiler.png';
+  }
+  if (lower.includes('priz') || lower.includes('plug')) {
+    return '/plug.png';
+  }
+  if (lower.includes('ampul') || lower.includes('lamba') || lower.includes('bulb') || lower.includes('aydınlatma')) {
+    return '/bulb.png';
+  }
+  return '/plug.png'; // default fallback to plug/kombi image
 };
 
 // Returns a display emoji for device type for non-image fallback
