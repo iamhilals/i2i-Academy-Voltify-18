@@ -1,7 +1,6 @@
 package com.voltify.core.dto;
 
 import java.util.List;
-import com.voltify.core.entity.Appliance;
 
 public class HomeStatusResponse {
 
@@ -13,12 +12,13 @@ public class HomeStatusResponse {
     private Double budgetQuotaTry;
     private Double baseRate;
     private Double penaltyRate;
-    private List<Appliance> appliances;
+    private List<ApplianceStatus> appliances;
     private Integer squareMeters;
     private String roomLayout;
 
     // Ignite'tan gelen anlık/canlı bilgiler
     private Double accumulatedWatt;
+    private Double totalKwh;          // toplam tüketim (kWh) = accumulatedWatt / 1.800.000
     private Double currentBalance;
     private Boolean isPenaltyActive;
     private Long lastUpdatedMillis;
@@ -45,8 +45,8 @@ public class HomeStatusResponse {
     public Double getPenaltyRate() { return penaltyRate; }
     public void setPenaltyRate(Double penaltyRate) { this.penaltyRate = penaltyRate; }
 
-    public List<Appliance> getAppliances() { return appliances; }
-    public void setAppliances(List<Appliance> appliances) { this.appliances = appliances; }
+    public List<ApplianceStatus> getAppliances() { return appliances; }
+    public void setAppliances(List<ApplianceStatus> appliances) { this.appliances = appliances; }
 
     public Integer getSquareMeters() { return squareMeters; }
     public void setSquareMeters(Integer squareMeters) { this.squareMeters = squareMeters; }
@@ -56,6 +56,9 @@ public class HomeStatusResponse {
 
     public Double getAccumulatedWatt() { return accumulatedWatt; }
     public void setAccumulatedWatt(Double accumulatedWatt) { this.accumulatedWatt = accumulatedWatt; }
+
+    public Double getTotalKwh() { return totalKwh; }
+    public void setTotalKwh(Double totalKwh) { this.totalKwh = totalKwh; }
 
     public Double getCurrentBalance() { return currentBalance; }
     public void setCurrentBalance(Double currentBalance) { this.currentBalance = currentBalance; }

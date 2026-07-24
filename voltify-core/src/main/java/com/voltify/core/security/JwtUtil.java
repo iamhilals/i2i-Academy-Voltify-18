@@ -1,5 +1,6 @@
 package com.voltify.core.security;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
@@ -8,13 +9,12 @@ import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtUtil {
 
-    // Key kod içine yazılmıyor, application.properties üzerinden okuyor
+    // Key kod içine yazılmıyor, environment/application.properties üzerinden okunuyor
     @Value("${jwt.secret}")
     private String secretKey;
 
@@ -22,10 +22,8 @@ public class JwtUtil {
     private static final long EXPIRATION_TIME = 1000 * 60 * 60 * 24;
 
     private Key getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(
-            java.util.Base64.getEncoder().encodeToString(secretKey.getBytes())
-        );
-        return Keys.hmacShaKeyFor(keyBytes);
+        // Secret en az 32 karakter (256-bit) olmalı; HS256 için doğrudan byte'ları kullan
+        return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(String email) {

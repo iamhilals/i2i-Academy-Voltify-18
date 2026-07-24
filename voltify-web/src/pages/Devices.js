@@ -100,6 +100,7 @@ const Devices = () => {
             h.appliances.forEach(a => {
               allAppliances.push({
                 id: a.id,
+                homeId: h.id,
                 name: a.name,
                 type: a.type || 'Elektronik',
                 location: `${h.name} - ${a.room || 'Salon'}`,
@@ -127,14 +128,29 @@ const Devices = () => {
     loadDevices();
   }, []);
 
-  const toggleDeviceStatus = (id) => {
+  const toggleDeviceStatus = async (deviceId) => {
+    const targetDev = devices.find(d => d.id === deviceId);
+    if (!targetDev) return;
+
+    const nextStatus = targetDev.status === 'active' ? 'standby' : 'active';
+    const nextWattage = nextStatus === 'active' ? 250 : 0;
+
     setDevices(devices.map(dev => {
-      if (dev.id === id) {
-        if (dev.status === 'active') return { ...dev, status: 'standby', currentWattage: 10, isAnomalous: false };
-        if (dev.status === 'standby' || dev.status === 'offline') return { ...dev, status: 'active', currentWattage: Math.floor(Math.random() * 200) + 100 };
+      if (dev.id === deviceId) {
+        return { ...dev, status: nextStatus, currentWattage: nextWattage };
       }
       return dev;
     }));
+
+    try {
+      if (targetDev.homeId && targetDev.id) {
+        await homeService.updateAppliance(targetDev.homeId, targetDev.id, {
+          name: targetDev.name
+        });
+      }
+    } catch (err) {
+      console.warn('Backend update failed:', err);
+    }
   };
 
   const turnOffAllStandby = () => {

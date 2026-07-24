@@ -19,22 +19,25 @@ const HomeDashboard = () => {
   const [homes, setHomes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadHomes = async () => {
-    setIsLoading(true);
+  const loadHomes = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const backendHomes = await homeService.getMyHomes();
       if (Array.isArray(backendHomes) && backendHomes.length > 0) {
         const formatted = backendHomes.map((h, idx) => {
-          const hasBreached = h.billingLedger 
+          const hasBreached = h.billingLedger
             ? (h.billingLedger.isPenaltyActive || h.billingLedger.accumulatedWatt >= h.powerQuotaWatt || h.billingLedger.currentBalance >= h.budgetQuotaTry)
             : false;
-          
+          // Gerçek kümülatif enerji (kWh) ve fatura (TL): ΣWatt / 1.800.000
+          const totalKwhVal = h.billingLedger ? (h.billingLedger.accumulatedWatt || 0) / 1800000 : 0;
+          const balanceVal = h.billingLedger ? (h.billingLedger.currentBalance || 0) : 0;
+
           return {
             id: h.id,
             name: h.name || `Ev ${h.id}`,
-            consumption: h.billingLedger 
-              ? `${Math.round((h.billingLedger.accumulatedWatt / 1000) * 10) / 10} kW`
-              : `${h.appliances ? (h.appliances.length * 0.5).toFixed(1) : '0.0'} kW`,
+            totalKwh: totalKwhVal,
+            balance: balanceVal,
+            consumption: `${totalKwhVal.toFixed(1)} kWh`,
             status: h.billingLedger && h.billingLedger.isPenaltyActive ? 'Cezai Durum' : 'Aktif',
             health: hasBreached ? 'KRİTİK' : 'MÜKEMMEL',
             healthScore: hasBreached ? 1 : 5,
@@ -50,27 +53,26 @@ const HomeDashboard = () => {
         setHomes([]);
       }
     } catch (err) {
-      console.warn('Could not load user homes from backend:', err);
-      setHomes([]);
+      // Hata mesajı api.js interceptor'ında toast olarak gösterilir
+      if (!silent) setHomes([]);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     loadHomes();
+    // Ana ızgarada kota/anomali durumunu canlı tut (sessiz yenileme)
+    const timer = setInterval(() => loadHomes(true), 5000);
+    return () => clearInterval(timer);
   }, []);
 
   // Dynamic Statistics Computations
   const totalHomesCount = homes.length;
   const activeHomesCount = homes.filter(h => !h.isCritical).length;
 
-  const totalConsumptionKW = homes.reduce((acc, h) => {
-    const val = parseFloat(h.consumption) || 0;
-    return acc + val;
-  }, 0).toFixed(1);
-
-  const totalSavingsTL = (homes.length * 61.37).toFixed(2);
+  const totalKwh = homes.reduce((acc, h) => acc + (h.totalKwh || 0), 0).toFixed(2);
+  const totalBillTL = homes.reduce((acc, h) => acc + (h.balance || 0), 0).toFixed(2);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -109,7 +111,7 @@ const HomeDashboard = () => {
               <div>
                 <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Toplam Tüketim</h3>
                 <p className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
-                  {totalConsumptionKW} <span className="text-lg text-gray-500 font-bold">kW</span>
+                  {totalKwh} <span className="text-lg text-gray-500 font-bold">kWh</span>
                 </p>
               </div>
             </div>
@@ -131,9 +133,9 @@ const HomeDashboard = () => {
                 <PiggyBank className="w-7 h-7 text-orange-500" />
               </div>
               <div>
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Toplam Tasarruf</h3>
+                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Toplam Fatura</h3>
                 <p className="text-3xl font-black text-green-600 dark:text-green-400 tracking-tight">
-                  {totalSavingsTL} <span className="text-lg font-bold">TL</span>
+                  ₺{totalBillTL}
                 </p>
               </div>
             </div>
@@ -145,8 +147,23 @@ const HomeDashboard = () => {
         </div>
       </div>
 
-      {/* Grid or Empty State */}
-      {homes.length === 0 ? (
+      {/* Grid, Skeleton (ilk yükleme) veya Boş Durum */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white dark:bg-[#1E271F] rounded-[2rem] p-4 border border-gray-100 dark:border-emerald-950/20">
+              <div className="h-48 rounded-3xl bg-gray-100 dark:bg-emerald-950/20 mb-5" />
+              <div className="h-5 w-2/3 rounded-lg bg-gray-100 dark:bg-emerald-950/20 mb-3" />
+              <div className="h-3 w-1/2 rounded-lg bg-gray-100 dark:bg-emerald-950/20 mb-6" />
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((j) => (
+                  <div key={j} className="h-1.5 flex-1 rounded-full bg-gray-100 dark:bg-emerald-950/20" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : homes.length === 0 ? (
         <div className="bg-white dark:bg-[#1E271F] border border-gray-100 dark:border-emerald-950/30 rounded-3xl p-12 flex flex-col items-center justify-center text-center shadow-sm animate-in fade-in duration-300">
           <div className="w-20 h-20 bg-green-50 dark:bg-emerald-950/30 text-[#4C811F] rounded-full flex items-center justify-center mb-4 shadow-inner">
             <HomeIcon className="w-10 h-10" />

@@ -1,13 +1,18 @@
 import API from './api';
 
 export const authService = {
-  async login(username, password) {
-    const response = await API.post('/api/auth/login', { username, password });
+  async login(usernameOrEmail, password) {
+    const response = await API.post('/api/auth/login', { 
+      identifier: usernameOrEmail, 
+      username: usernameOrEmail, 
+      email: usernameOrEmail, 
+      password 
+    });
     if (response.data && response.data.token) {
       localStorage.setItem('voltify_token', response.data.token);
       const data = response.data;
       const existingUser = JSON.parse(localStorage.getItem('voltify_user') || '{}');
-      const uname = data.username || username || 'sude';
+      const uname = data.username || usernameOrEmail || 'sude';
       localStorage.setItem('voltify_user', JSON.stringify({
         ...existingUser,
         username: uname,

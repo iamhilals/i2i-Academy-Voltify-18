@@ -21,6 +21,14 @@ export const homeService = {
     return response.data;
   },
 
+  // Cihazın gerçek tüketim geçmişi (dakika cinsinden pencere: 60=1s, 360=6s, 1440=24s)
+  async getApplianceReadings(homeId, applianceId, minutes) {
+    const response = await API.get(`/api/homes/${homeId}/appliances/${applianceId}/readings`, {
+      params: { minutes },
+    });
+    return response.data;
+  },
+
   async updateHome(homeId, updateData) {
     const response = await API.put(`/api/homes/${homeId}`, updateData);
     return response.data;
@@ -33,6 +41,11 @@ export const homeService = {
 
   async addAppliance(homeId, applianceData) {
     const response = await API.post(`/api/homes/${homeId}/appliances`, applianceData);
+    return response.data;
+  },
+
+  async updateAppliance(homeId, applianceId, applianceData) {
+    const response = await API.put(`/api/homes/${homeId}/appliances/${applianceId}`, applianceData);
     return response.data;
   },
 

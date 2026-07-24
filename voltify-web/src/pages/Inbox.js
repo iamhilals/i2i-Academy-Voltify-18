@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Mail, Search, Inbox as InboxIcon, Star, Clock, Send, Trash2, ArrowLeft, ArrowRight, Zap, CheckCircle2, AlertTriangle, PlayCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Mail, Search, Inbox as InboxIcon, Star, Trash2, ArrowRight, Zap, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { inboxService } from '../services/inboxService';
 
 const mockEmails = [
   {
@@ -149,12 +150,98 @@ const mockEmails = [
   }
 ];
 
+// --- Gerçek uyarı (penalty/anomali) mesajlarını gelen kutusu formatına çevir ---
+const CATEGORY_META = {
+  BREACH_80: { sender: 'Voltify Kota Uyarısı', title: '%80 Bütçe Kotası Aşıldı', emoji: '⚠️', tone: 'orange' },
+  BREACH_100: { sender: 'Voltify Kota Uyarısı', title: '%100 Kota Aşıldı — Ceza Tarifesi Aktif', emoji: '🚨', tone: 'red' },
+  ANOMALY_DETECTED: { sender: 'Voltify Anomali', title: 'Cihaz Anomali Uyarısı', emoji: '🔥', tone: 'red' },
+};
+
+const formatInboxDate = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay
+    ? d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+};
+
+const AlertContent = ({ msg, meta }) => {
+  const toneClasses = meta.tone === 'red'
+    ? 'bg-red-50 border-red-200 text-red-800'
+    : 'bg-orange-50 border-orange-200 text-orange-800';
+  return (
+    <div className="space-y-6">
+      <div className={`flex items-center gap-4 p-4 rounded-2xl border ${toneClasses}`}>
+        <AlertTriangle className="w-8 h-8 shrink-0" />
+        <div>
+          <h4 className="font-bold">{meta.emoji} {meta.title}</h4>
+          <p className="text-sm font-medium opacity-90">Lokasyon: {msg.homeName || 'Eviniz'}</p>
+        </div>
+      </div>
+      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+        <p className="text-gray-700 font-medium leading-relaxed whitespace-pre-line">{msg.body}</p>
+      </div>
+      {msg.emailSent && (
+        <p className="text-xs text-gray-400 flex items-center gap-1.5">
+          <CheckCircle2 className="w-4 h-4 text-green-500" /> Bu uyarı kayıtlı e-posta adresinize de gönderildi.
+        </p>
+      )}
+    </div>
+  );
+};
+
+const mapAlert = (msg) => {
+  const meta = CATEGORY_META[msg.category] || { sender: 'Voltify', title: msg.category || 'Bildirim', emoji: '⚡', tone: 'orange' };
+  const body = msg.body || '';
+  return {
+    id: `alert-${msg.id}`,
+    sender: meta.sender,
+    subject: `${meta.emoji} ${meta.title}${msg.homeName ? ' — ' + msg.homeName : ''}`,
+    preview: body.length > 120 ? body.slice(0, 120) + '…' : body,
+    date: formatInboxDate(msg.createdAt),
+    isUnread: true,
+    isStarred: msg.category === 'BREACH_100',
+    type: 'penalty',
+    content: <AlertContent msg={msg} meta={meta} />,
+  };
+};
+
 const Inbox = () => {
+  const [alerts, setAlerts] = useState([]);
   const [activeMail, setActiveMail] = useState(mockEmails[0]);
   const [searchQuery, setSearchQuery] = useState('');
+  const didAutoSelect = useRef(false);
+  const readIds = useRef(new Set());
 
-  const filteredEmails = mockEmails.filter(email => 
-    email.subject.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  // Penalty/anomali uyarılarını backend'den çek, gelen kutusuna düşür, periyodik tazele
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const rows = await inboxService.getMessages();
+        if (!active) return;
+        const mapped = (Array.isArray(rows) ? rows : []).map(mapAlert);
+        mapped.forEach((m) => { if (readIds.current.has(m.id)) m.isUnread = false; });
+        setAlerts(mapped);
+        if (!didAutoSelect.current && mapped.length > 0) {
+          setActiveMail(mapped[0]); // en yeni uyarı otomatik açılsın
+          didAutoSelect.current = true;
+        }
+      } catch (e) {
+        // Hata toast'ı api.js interceptor'ında gösterilir
+      }
+    };
+    load();
+    const timer = setInterval(load, 20000);
+    return () => { active = false; clearInterval(timer); };
+  }, []);
+
+  const emails = useMemo(() => [...alerts, ...mockEmails], [alerts]);
+
+  const filteredEmails = emails.filter(email =>
+    email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
     email.sender.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -195,7 +282,8 @@ const Inbox = () => {
                   key={email.id}
                   onClick={() => {
                     setActiveMail(email);
-                    email.isUnread = false; // Mark as read locally
+                    email.isUnread = false; // Yerel olarak okundu işaretle
+                    readIds.current.add(email.id); // Tazelemede tekrar okunmadıya dönmesin
                   }}
                   className={`p-5 cursor-pointer transition-colors relative border-l-4 ${
                     activeMail.id === email.id 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Activity, AlertTriangle, TrendingUp, TurkishLira, PieChart as PieChartIcon, Zap, Plus } from 'lucide-react';
+import { ArrowLeft, Activity, AlertTriangle, TurkishLira, PieChart as PieChartIcon, Zap, Plus } from 'lucide-react';
 import { 
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -73,39 +73,87 @@ const HomeDetail = () => {
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
   const [homeState, setHomeState] = useState(null);
   const [appliances, setAppliances] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchDetails() {
+    if (!id) return;
+    let active = true;
+
+    // Canlı ev durumu: statik alanlar + anlık watt & anomali (Ignite sub-ms okuma)
+    async function fetchStatus() {
       try {
         const statusData = await homeService.getHomeStatus(id);
-        if (statusData) {
-          const rawWatt = statusData.accumulatedWatt || 0;
-          setHomeState({
-            id: statusData.id || parseInt(id),
-            name: statusData.name || `Ev ${id}`,
-            consumption: `${(rawWatt / 1000).toFixed(1)} kW`,
-            currentBalance: statusData.currentBalance || 0,
-            budgetQuotaTry: statusData.budgetQuotaTry || 1500,
-            status: statusData.isPenaltyActive ? 'Cezai Durum' : 'Optimal',
-            isCritical: statusData.isPenaltyActive || false,
-            image: mockHomeData.image,
-            squareMeters: statusData.squareMeters || 120,
-            roomLayout: statusData.roomLayout || '2+1',
-          });
-          if (Array.isArray(statusData.appliances)) {
-            setAppliances(statusData.appliances);
-          } else {
-            setAppliances([]);
-          }
-        }
+        if (!active || !statusData) return;
+        setHomeState({
+          id: statusData.id || parseInt(id),
+          name: statusData.name || `Ev ${id}`,
+          totalKwh: statusData.totalKwh || 0,
+          currentBalance: statusData.currentBalance || 0,
+          budgetQuotaTry: statusData.budgetQuotaTry || 1500,
+          status: statusData.isPenaltyActive ? 'Cezai Durum' : 'Optimal',
+          isCritical: statusData.isPenaltyActive || false,
+          image: mockHomeData.image,
+          squareMeters: statusData.squareMeters || 120,
+          roomLayout: statusData.roomLayout || '2+1',
+        });
+        const freshAppliances = Array.isArray(statusData.appliances) ? statusData.appliances : [];
+        setAppliances(freshAppliances);
+        // Modal açıksa seçili cihazın canlı verisini (watt/anomali) de tazele
+        setSelectedDevice((prev) => {
+          if (!prev) return prev;
+          const fresh = freshAppliances.find((a) => a.id === prev.id);
+          return fresh ? { ...prev, ...fresh } : prev;
+        });
       } catch (err) {
-        console.warn('Could not fetch home status from backend, using default empty state:', err);
+        // Hatalar api.js interceptor'ında kullanıcıya toast olarak gösterilir
+      } finally {
+        if (active) setIsLoading(false);
       }
     }
-    if (id) {
-      fetchDetails();
+
+    // Günlük geçmiş trendi: PostgreSQL snapshot'ları (grafikler için)
+    async function fetchHistory() {
+      try {
+        const data = await homeService.getHomeHistory(id);
+        if (!active) return;
+        const rows = Array.isArray(data) ? data : (data && Array.isArray(data.content) ? data.content : []);
+        setHistory(rows);
+      } catch (err) {
+        // Sessizce geç; grafik canlı veriyle fallback yapar
+      }
     }
+
+    fetchStatus();
+    fetchHistory();
+
+    // Şartname NFR: 1-2 sn agresif polling ile canlı güncelleme (UI donmadan)
+    const statusTimer = setInterval(fetchStatus, 2000);
+    const historyTimer = setInterval(fetchHistory, 15000);
+    return () => {
+      active = false;
+      clearInterval(statusTimer);
+      clearInterval(historyTimer);
+    };
   }, [id]);
+
+  const handleToggleDevice = async (deviceToToggle) => {
+    const isOff = (deviceToToggle.currentWattage || 0) === 0;
+    const nextWattage = isOff ? 250 : 0;
+
+    setAppliances(prev => prev.map(a => a.id === deviceToToggle.id ? { ...a, currentWattage: nextWattage } : a));
+    if (selectedDevice && selectedDevice.id === deviceToToggle.id) {
+      setSelectedDevice(prev => ({ ...prev, currentWattage: nextWattage }));
+    }
+
+    try {
+      await homeService.updateAppliance(id, deviceToToggle.id, {
+        name: deviceToToggle.name
+      });
+    } catch (err) {
+      console.warn('Backend update failed:', err);
+    }
+  };
 
   const home = homeState || { 
     ...mockHomeData, 
@@ -120,36 +168,48 @@ const HomeDetail = () => {
   const formattedBalanceMajor = Math.floor(currentBalance).toLocaleString();
   const formattedBalanceMinor = (currentBalance % 1).toFixed(2).substring(2);
 
-  // Dynamic Chart Data based on appliances
+  // Anlık toplam cihaz gücü (canlı telemetriden)
   const totalDeviceWatt = appliances.reduce((acc, a) => acc + (a.currentWattage || 0), 0);
-  const dailyTrendData = [
-    { time: '00:00', consumption: (totalDeviceWatt * 0.0004).toFixed(1) },
-    { time: '04:00', consumption: (totalDeviceWatt * 0.0002).toFixed(1) },
-    { time: '08:00', consumption: (totalDeviceWatt * 0.0008).toFixed(1) },
-    { time: '12:00', consumption: (totalDeviceWatt * 0.0010).toFixed(1) },
-    { time: '16:00', consumption: (totalDeviceWatt * 0.0012).toFixed(1) },
-    { time: '20:00', consumption: (totalDeviceWatt * 0.0009).toFixed(1) },
-    { time: '24:00', consumption: (totalDeviceWatt * 0.0005).toFixed(1) },
-  ];
 
-  const weeklyCostData = [
-    { day: 'Pzt', cost: (currentBalance * 0.12).toFixed(1) },
-    { day: 'Sal', cost: (currentBalance * 0.14).toFixed(1) },
-    { day: 'Çar', cost: (currentBalance * 0.10).toFixed(1) },
-    { day: 'Per', cost: (currentBalance * 0.15).toFixed(1) },
-    { day: 'Cum', cost: (currentBalance * 0.18).toFixed(1) },
-    { day: 'Cmt', cost: (currentBalance * 0.20).toFixed(1) },
-    { day: 'Paz', cost: (currentBalance * 0.11).toFixed(1) },
-  ];
+  // Günlük trend: PostgreSQL snapshot'larından türetilir (kWh = accumulatedWatt / 1.800.000).
+  // Snapshot yoksa canlı anlık değerle tek noktalı fallback gösterilir.
+  const sortedHistory = [...history].sort((a, b) => new Date(a.snapshotDate) - new Date(b.snapshotDate));
+  const dailyTrendData = sortedHistory.length > 0
+    ? sortedHistory.map((s) => ({
+        time: new Date(s.snapshotDate).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }),
+        consumption: +(((s.dailyWatt || 0) / 1800000)).toFixed(2),
+        cost: +((s.dailyCost || 0)).toFixed(2),
+      }))
+    : [{ time: 'Bugün', consumption: +((totalDeviceWatt / 1000)).toFixed(2), cost: +currentBalance.toFixed(2) }];
 
-  const categoryData = appliances.length > 0 ? [
-    { name: 'İklimlendirme', value: 45 },
-    { name: 'Beyaz Eşya', value: 25 },
-    { name: 'Aydınlatma', value: 15 },
-    { name: 'Elektronik', value: 15 },
-  ] : [
-    { name: 'Cihaz Bulunmuyor', value: 100 }
-  ];
+  const weeklyCostData = dailyTrendData.map((d) => ({ day: d.time, cost: d.cost }));
+
+  // Tüketim dağılımı: cihaz tiplerine göre anlık watt toplamı (canlı)
+  const categoryMap = {};
+  appliances.forEach((a) => {
+    const key = a.type || 'Diğer';
+    categoryMap[key] = (categoryMap[key] || 0) + (a.currentWattage || 0);
+  });
+  const categoryEntries = Object.entries(categoryMap).filter(([, v]) => v > 0);
+  const categoryData = categoryEntries.length > 0
+    ? categoryEntries.map(([name, value]) => ({ name, value: Math.round(value) }))
+    : [{ name: 'Veri bekleniyor', value: 100 }];
+
+  // Şartname NFR: ağ isteği sürerken skeleton göster (ilk yükleme)
+  if (isLoading && !homeState) {
+    return (
+      <div className="w-full flex flex-col gap-8 animate-pulse">
+        <div className="h-64 rounded-3xl bg-gray-100 dark:bg-[#1E271F]" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="h-96 rounded-3xl bg-gray-100 dark:bg-[#1E271F] lg:col-span-1" />
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            <div className="h-28 rounded-3xl bg-gray-100 dark:bg-[#1E271F]" />
+            <div className="h-64 rounded-3xl bg-gray-100 dark:bg-[#1E271F]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col">
@@ -190,8 +250,9 @@ const HomeDetail = () => {
           <div className="text-right">
             <p className="text-gray-300 text-sm font-bold uppercase tracking-wider mb-1">Anlık Tüketim</p>
             <p className={`text-4xl font-black ${home.isCritical ? 'text-red-400' : 'text-green-400'}`}>
-              {appliances.length > 0 ? home.consumption : '0.0 kW'}
+              {(totalDeviceWatt / 1000).toFixed(2)} <span className="text-2xl">kW</span>
             </p>
+            <p className="text-white text-lg font-black mt-1">Toplam: {(home.totalKwh || 0).toFixed(2)} kWh</p>
           </div>
         </div>
       </div>
@@ -286,14 +347,18 @@ const HomeDetail = () => {
                       <div className="flex justify-between text-[11px] font-bold mb-1 uppercase tracking-wider">
                         <span className="text-gray-400">Canlı Çekim</span>
                         <span className={app.isAnomalous ? 'text-red-600' : 'text-gray-700 dark:text-gray-300'}>
-                          {app.currentWattage || 0}W <span className="text-gray-400 font-medium">/ {app.maxSafeWattage || 2000}W</span>
+                          {Math.round(app.currentWattage || 0)}W <span className="text-gray-400 font-medium">/ {Math.round(app.maxSafeWattage || 2000)}W</span>
                         </span>
                       </div>
                       <div className="w-full bg-gray-100 dark:bg-emerald-950/30 h-2 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className={`h-full rounded-full ${app.isAnomalous ? 'bg-red-500' : 'bg-[#4C811F]'}`}
                           style={{ width: `${Math.min(((app.currentWattage || 0) / (app.maxSafeWattage || 2000)) * 100, 100)}%` }}
                         />
+                      </div>
+                      <div className="flex justify-between text-[10px] font-bold text-gray-400 mt-1.5">
+                        <span>Toplam</span>
+                        <span>{(app.totalKwh || 0).toFixed(2)} kWh · ₺{(app.totalCost || 0).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -323,13 +388,12 @@ const HomeDetail = () => {
             
             <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm flex flex-col justify-center">
                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" /> Tasarruf Hedefi
+                <Zap className="w-4 h-4" /> Toplam Enerji
               </h4>
-              <p className="text-4xl font-black text-[#4C811F] mb-2">% {appliances.length > 0 ? '12.4' : '0.0'}</p>
-              <div className="w-full bg-gray-100 dark:bg-emerald-950/30 h-1.5 rounded-full mt-2">
-                <div className="h-full rounded-full bg-[#4C811F]" style={{ width: `${appliances.length > 0 ? 60 : 0}%` }}></div>
-              </div>
-              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mt-2 text-right">Aylık hedefte ilerleme</p>
+              <p className="text-4xl font-black text-[#4C811F] mb-2">
+                {(home.totalKwh || 0).toFixed(2)} <span className="text-xl text-gray-400">kWh</span>
+              </p>
+              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mt-2 text-right">Şimdiye kadarki toplam tüketim</p>
             </div>
           </div>
 
@@ -337,7 +401,7 @@ const HomeDetail = () => {
           <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm">
             <div className="flex items-center gap-2 mb-6">
               <Activity className="w-5 h-5 text-gray-400" />
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">24 Saatlik Tüketim (kW)</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Günlük Tüketim Trendi (kWh)</h3>
             </div>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -365,7 +429,7 @@ const HomeDetail = () => {
             <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
                 <TurkishLira className="w-5 h-5 text-gray-400" />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Haftalık Maliyet (₺)</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Günlük Maliyet (₺)</h3>
               </div>
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -400,7 +464,7 @@ const HomeDetail = () => {
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2">
                   {categoryData.map((entry, index) => (
                     <div key={entry.name} className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                       <span className="text-xs font-bold text-gray-600 dark:text-gray-300">{entry.name}</span>
                     </div>
                   ))}
@@ -413,10 +477,12 @@ const HomeDetail = () => {
       </div>
 
       {/* Device Animation Modal */}
-      <DeviceDetailModal 
-        isOpen={!!selectedDevice} 
-        onClose={() => setSelectedDevice(null)} 
-        device={selectedDevice} 
+      <DeviceDetailModal
+        isOpen={!!selectedDevice}
+        onClose={() => setSelectedDevice(null)}
+        device={selectedDevice}
+        onToggleDevice={handleToggleDevice}
+        homeId={id}
       />
 
       {/* Add Device Slideover */}
