@@ -3,15 +3,69 @@ import { Server, Activity, AlertTriangle, Power, Zap, MapPin, Search } from 'luc
 
 // Mock all devices from different homes
 const mockAllDevices = [
-  { id: 1, name: 'Buzdolabı', type: 'Soğutucu', location: 'Villa i2i - Mutfak', currentWattage: 150, status: 'active', isAnomalous: false, image: 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 2, name: 'Klima (Salon)', type: 'İklimlendirme', location: 'Villa i2i - Salon', currentWattage: 2200, status: 'active', isAnomalous: false, image: 'https://images.unsplash.com/photo-1598444983083-d9d300fdf220?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 3, name: 'Çamaşır Makinesi', type: 'Beyaz Eşya', location: 'Crimson Lodge - Banyo', currentWattage: 3100, status: 'active', isAnomalous: true, image: 'https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 4, name: 'Televizyon', type: 'Elektronik', location: 'Villa i2i - Salon', currentWattage: 120, status: 'standby', isAnomalous: false, image: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 5, name: 'Oyun Konsolu', type: 'Elektronik', location: 'Villa i2i - Salon', currentWattage: 15, status: 'standby', isAnomalous: false, image: 'https://images.unsplash.com/photo-1605901309584-818e25960b8f?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 6, name: 'Kombi', type: 'İklimlendirme', location: 'Eco Habitat - Bodrum', currentWattage: 0, status: 'offline', isAnomalous: false, image: 'https://images.unsplash.com/photo-1596756812836-979927b2354c?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 7, name: 'Klima (Yatak Odası)', type: 'İklimlendirme', location: 'Eco Habitat - Yatak Odası', currentWattage: 0, status: 'offline', isAnomalous: false, image: 'https://images.unsplash.com/photo-1598444983083-d9d300fdf220?auto=format&fit=crop&q=80&w=150&h=150' },
-  { id: 8, name: 'Robot Süpürge', type: 'Küçük Ev Aleti', location: 'Crimson Lodge - Koridor', currentWattage: 45, status: 'charging', isAnomalous: false, image: 'https://images.unsplash.com/photo-1589824783837-6169889cb205?auto=format&fit=crop&q=80&w=150&h=150' },
+  { id: 1, name: 'Buzdolabı', type: 'Soğutucu', location: 'Villa i2i - Mutfak', currentWattage: 150, status: 'active', isAnomalous: false },
+  { id: 2, name: 'Klima (Salon)', type: 'İklimlendirme', location: 'Villa i2i - Salon', currentWattage: 2200, status: 'active', isAnomalous: false },
+  { id: 3, name: 'Çamaşır Makinesi', type: 'Beyaz Eşya', location: 'Crimson Lodge - Banyo', currentWattage: 3100, status: 'active', isAnomalous: true },
+  { id: 4, name: 'Televizyon', type: 'Elektronik', location: 'Villa i2i - Salon', currentWattage: 120, status: 'standby', isAnomalous: false },
+  { id: 5, name: 'Oyun Konsolu', type: 'Elektronik', location: 'Villa i2i - Salon', currentWattage: 15, status: 'standby', isAnomalous: false },
+  { id: 6, name: 'Kombi', type: 'İklimlendirme', location: 'Eco Habitat - Bodrum', currentWattage: 0, status: 'offline', isAnomalous: false },
+  { id: 7, name: 'Klima (Yatak Odası)', type: 'İklimlendirme', location: 'Eco Habitat - Yatak Odası', currentWattage: 0, status: 'offline', isAnomalous: false },
+  { id: 8, name: 'Robot Süpürge', type: 'Küçük Ev Aleti', location: 'Crimson Lodge - Koridor', currentWattage: 45, status: 'charging', isAnomalous: false },
+  { id: 9, name: 'Laptop', type: 'Elektronik', location: 'Villa i2i - Çalışma Odası', currentWattage: 65, status: 'active', isAnomalous: false },
+  { id: 10, name: 'Bulaşık Makinesi', type: 'Beyaz Eşya', location: 'Crimson Lodge - Mutfak', currentWattage: 1800, status: 'active', isAnomalous: false },
+  { id: 11, name: 'Kahve Makinesi', type: 'Küçük Ev Aleti', location: 'Villa i2i - Mutfak', currentWattage: 1200, status: 'standby', isAnomalous: false },
+  { id: 12, name: 'Fan', type: 'İklimlendirme', location: 'Eco Habitat - Salon', currentWattage: 60, status: 'active', isAnomalous: false },
 ];
+
+// Maps device name/type to a local public PNG image path
+const getDeviceLocalImage = (type, name) => {
+  const lower = (name || '').toLowerCase();
+  const lType = (type || '').toLowerCase();
+  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu'))
+    return '/fridge/1.png';
+  return null; // No local PNG available — will use emoji tile
+};
+
+// Returns a display emoji for device type for non-image fallback
+const getDeviceEmoji = (type, name) => {
+  const lower = (name || '').toLowerCase();
+  const lType = (type || '').toLowerCase();
+  if (lower.includes('klima') || lType.includes('iklimlendirme')) return '❄️';
+  if (lower.includes('çamaşır')) return '🫧';
+  if (lower.includes('kurutucu')) return '🌀';
+  if (lower.includes('televizyon') || lower.includes('tv')) return '📺';
+  if (lower.includes('konsol') || lower.includes('oyun')) return '🎮';
+  if (lower.includes('süpürge')) return '🤖';
+  if (lower.includes('laptop') || lower.includes('dizüstü')) return '💻';
+  if (lower.includes('masaüstü') || lower.includes('desktop')) return '🖥️';
+  if (lower.includes('kombi') || lower.includes('ısıtıcı')) return '🔥';
+  if (lower.includes('fan') || lower.includes('vantilatör')) return '💨';
+  if (lower.includes('kettle') || lower.includes('su ısıtıcı')) return '☕';
+  if (lower.includes('mikro')) return '📡';
+  if (lower.includes('kahve')) return '☕';
+  if (lower.includes('blender')) return '🥤';
+  if (lower.includes('panini') || lower.includes('tost')) return '🥪';
+  if (lower.includes('ampul') || lower.includes('lamba')) return '💡';
+  if (lower.includes('priz')) return '🔌';
+  if (lower.includes('ocak') || lower.includes('fırın')) return '🍳';
+  if (lower.includes('bulaşık')) return '🍽️';
+  if (lower.includes('kamera') || lower.includes('güvenlik')) return '📷';
+  return '⚡';
+};
+
+// Background gradient colors per device category
+const getDeviceGradient = (type, name) => {
+  const lower = (name || '').toLowerCase();
+  const lType = (type || '').toLowerCase();
+  if (lower.includes('klima') || lType.includes('iklimlendirme') || lower.includes('fan')) return 'from-sky-50 to-blue-100';
+  if (lower.includes('çamaşır') || lower.includes('bulaşık')) return 'from-indigo-50 to-indigo-100';
+  if (lower.includes('televizyon') || lower.includes('konsol') || lower.includes('laptop') || lower.includes('masaüstü')) return 'from-gray-50 to-slate-100';
+  if (lower.includes('kahve') || lower.includes('kettle') || lower.includes('ocak') || lower.includes('tost')) return 'from-amber-50 to-orange-100';
+  if (lower.includes('süpürge')) return 'from-violet-50 to-purple-100';
+  if (lower.includes('kombi') || lower.includes('ısıtıcı')) return 'from-red-50 to-orange-100';
+  return 'from-green-50 to-emerald-100';
+};
+
 
 const Devices = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -180,11 +234,31 @@ const Devices = () => {
                   </button>
                 </div>
 
-                {/* Device Info */}
-                <div className="flex flex-col items-center mb-6">
-                  <div className="relative mb-4">
-                    <div className={`w-24 h-24 rounded-2xl overflow-hidden shadow-sm border-4 transition-all duration-300 ${device.isAnomalous ? 'border-red-400 scale-105' : isActive ? 'border-green-100' : 'border-transparent grayscale opacity-70'}`}>
-                      <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
+                {/* Device Image or Emoji Tile */}
+                  <div className="flex flex-col items-center mb-6">
+                    <div className="relative mb-4">
+                      <div className={`w-24 h-24 rounded-2xl overflow-hidden shadow-sm border-4 transition-all duration-300 ${
+                        device.isAnomalous ? 'border-red-400 scale-105' : isActive ? 'border-green-100' : 'border-transparent'
+                      }`}>
+                        {(() => {
+                          const localImg = getDeviceLocalImage(device.type, device.name);
+                          if (localImg) {
+                            return (
+                              <img
+                                src={localImg}
+                                alt={device.name}
+                                className={`w-full h-full object-cover ${!isActive && !isStandby ? 'grayscale opacity-70' : ''}`}
+                              />
+                            );
+                          }
+                          return (
+                            <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${getDeviceGradient(device.type, device.name)} ${
+                              !isActive && !isStandby ? 'grayscale opacity-60' : ''
+                            }`}>
+                              <span className="text-4xl">{getDeviceEmoji(device.type, device.name)}</span>
+                            </div>
+                          );
+                        })()}
                     </div>
                     {isStandby && (
                       <div className="absolute -top-3 -right-3 bg-white border border-gray-100 rounded-full w-9 h-9 flex items-center justify-center shadow-lg animate-bounce duration-1000">

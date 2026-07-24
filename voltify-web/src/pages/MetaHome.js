@@ -1,12 +1,79 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Sky, OrbitControls, Html, useKeyboardControls, KeyboardControls, TransformControls } from '@react-three/drei';
+import { Sky, OrbitControls, Html, useKeyboardControls, KeyboardControls, useGLTF } from '@react-three/drei';
+import { TransformControls } from '@react-three/drei/core/TransformControls';
 import * as THREE from 'three';
 import { ArrowLeft, Zap } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
+// ===== GLB Device config: maps device name/type to a public .glb file =====
+const getDeviceGLBConfig = (type, name) => {
+  const lower = (name || '').toLowerCase();
+  const lType = (type || '').toLowerCase();
+  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu'))
+    return { path: '/freezer.glb', targetHeight: 1.8 };
+  if (lower.includes('klima') || lower.includes(' ac') || lType.includes('iklimlendirme'))
+    return { path: '/ac.glb', targetHeight: 0.45, posY: 2.0 };
+  if ((lower.includes('çamaşır') || lower.includes('washer')) && !lower.includes('bulaşık'))
+    return { path: '/washer.glb', targetHeight: 1.5 };
+  if (lower.includes('kurutucu') || lower.includes('kurutma') || lower.includes('dryer'))
+    return { path: '/dryer.glb', targetHeight: 1.5 };
+  if (lower.includes('televizyon') || lower.includes(' tv') || lower.startsWith('tv'))
+    return { path: '/tv.glb', targetHeight: 0.7, posY: 0.5 };
+  if (lower.includes('konsol') || lower.includes('oyun konsolu'))
+    return { path: '/console.glb', targetHeight: 0.3, posY: 0.15 };
+  if (lower.includes('süpürge'))
+    return { path: '/vacuum.glb', targetHeight: 1.0 };
+  if (lower.includes('laptop') || lower.includes('dizüstü'))
+    return { path: '/laptop.glb', targetHeight: 0.5, posY: 0.5 };
+  if (lower.includes('masaüstü') || lower.includes('desktop'))
+    return { path: '/desktop.glb', targetHeight: 1.0 };
+  if (lower.includes('ısıtıcı') && !lower.includes('su'))
+    return { path: '/heater.glb', targetHeight: 1.2 };
+  if (lower.includes('fan') || lower.includes('vantilatör'))
+    return { path: '/fan.glb', targetHeight: 1.0 };
+  if (lower.includes('kettle') || lower.includes('su ısıtıcı') || lower.includes('ibrik'))
+    return { path: '/kettle.glb', targetHeight: 0.5, posY: 0.25 };
+  if (lower.includes('mikrodalga') || lower.includes('microwave'))
+    return { path: '/microwave.glb', targetHeight: 0.45, posY: 0.5 };
+  if (lower.includes('kahve') || lower.includes('espresso'))
+    return { path: '/coffee_maker.glb', targetHeight: 0.7, posY: 0.35 };
+  if (lower.includes('blender'))
+    return { path: '/blender.glb', targetHeight: 0.6, posY: 0.3 };
+  if (lower.includes('panini') || lower.includes('tost makinesi'))
+    return { path: '/panini.glb', targetHeight: 0.3, posY: 0.15 };
+  if (lower.includes('ampul') || lower.includes('akıllı lamba'))
+    return { path: '/smart_bulb.glb', targetHeight: 0.35, posY: 1.0 };
+  if (lower.includes('priz'))
+    return { path: '/smart_plug.glb', targetHeight: 0.35, posY: 0.1 };
+  if (lower.includes('ocak') || lower.includes('fırın'))
+    return { path: '/stove.glb', targetHeight: 1.0 };
+  if (lower.includes('bulaşık'))
+    return { path: '/dishwasher.glb', targetHeight: 1.5 };
+  return null;
+};
+
+// Auto-scaled GLB device model: normalizes to targetHeight via bounding box
+const GLBDeviceModel = ({ path, targetHeight = 1.5, posY = 0 }) => {
+  const { scene } = useGLTF(path);
+  const model = useMemo(() => {
+    const clone = scene.clone(true);
+    const box = new THREE.Box3().setFromObject(clone);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    if (maxDim > 0) clone.scale.setScalar(targetHeight / maxDim);
+    const newBox = new THREE.Box3().setFromObject(clone);
+    clone.position.y = -newBox.min.y + posY;
+    clone.traverse(child => {
+      if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+    });
+    return clone;
+  }, [scene, targetHeight, posY]);
+  return <primitive object={model} />;
+};
+
 // Device Component
-const InteractiveDevice = ({ deviceId, isActive, onDoubleClick, setOrbitEnabled, position, name, type, status, wattage, color, playerRef, rotationY = 0 }) => {
+const InteractiveDevice = ({ deviceId, isActive, onDoubleClick, setOrbitEnabled, position, name, type, status, wattage, color, playerRef, rotationY = 0, onPositionChange }) => {
   const meshRef = useRef();
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -24,10 +91,25 @@ const InteractiveDevice = ({ deviceId, isActive, onDoubleClick, setOrbitEnabled,
     }
   });
 
-  // Render the device mesh/group based on name or type
+  // Render the device mesh/group — uses real GLB model if available, otherwise box geometry
   const renderDevice3DShape = () => {
     const lower = name.toLowerCase();
     const lowerType = type ? type.toLowerCase() : '';
+
+    // 🔥 Try to load actual GLB model from /public first
+    const glbConfig = getDeviceGLBConfig(type, name);
+    if (glbConfig) {
+      return (
+        <Suspense fallback={
+          <mesh position={[0, 0.6, 0]} castShadow>
+            <boxGeometry args={[0.8, 1.2, 0.8]} />
+            <meshStandardMaterial color={color} roughness={0.5} />
+          </mesh>
+        }>
+          <GLBDeviceModel path={glbConfig.path} targetHeight={glbConfig.targetHeight || 1.5} posY={glbConfig.posY || 0} />
+        </Suspense>
+      );
+    }
 
     // 1. Refrigerator / Freezer (Buzdolabı / Soğutucu)
     if (lowerType.includes('soğutucu') || lower.includes('buzdolabı') || lower.includes('fridge') || lower.includes('dondurucu')) {
@@ -494,7 +576,13 @@ const InteractiveDevice = ({ deviceId, isActive, onDoubleClick, setOrbitEnabled,
           mode="translate" 
           showY={false}
           onPointerDown={() => setOrbitEnabled(false)} 
-          onPointerUp={() => setOrbitEnabled(true)}
+          onPointerUp={() => {
+            setOrbitEnabled(true);
+            if (onPositionChange) {
+              const pos = meshRef.current.position;
+              onPositionChange([pos.x, pos.y, pos.z]);
+            }
+          }}
         />
       )}
     </>
@@ -548,6 +636,137 @@ const PottedPlant = ({ position }) => (
       <sphereGeometry args={[0.26, 8, 8]} />
       <meshStandardMaterial color="#5C8D3C" roughness={0.9} />
     </mesh>
+  </group>
+);
+
+// 🖼️ Wall Painting / Frame Component
+const WallPainting = ({ position, rotation = [0, 0, 0], width = 1.4, height = 0.95, color1 = '#E8A87C', color2 = '#6B8F71' }) => (
+  <group position={position} rotation={rotation}>
+    {/* Frame */}
+    <mesh castShadow>
+      <boxGeometry args={[width + 0.12, height + 0.12, 0.06]} />
+      <meshStandardMaterial color="#5C3D1E" roughness={0.7} metalness={0.1} />
+    </mesh>
+    {/* Canvas */}
+    <mesh position={[0, 0, 0.04]}>
+      <boxGeometry args={[width, height, 0.02]} />
+      <meshStandardMaterial color={color1} roughness={0.9} />
+    </mesh>
+    {/* Abstract art stroke 1 */}
+    <mesh position={[-width * 0.2, height * 0.1, 0.06]}>
+      <boxGeometry args={[width * 0.35, height * 0.55, 0.01]} />
+      <meshStandardMaterial color={color2} roughness={0.95} />
+    </mesh>
+    {/* Abstract art stroke 2 */}
+    <mesh position={[width * 0.18, -height * 0.12, 0.06]}>
+      <boxGeometry args={[width * 0.28, height * 0.35, 0.01]} />
+      <meshStandardMaterial color="#D4A5A5" roughness={0.95} />
+    </mesh>
+  </group>
+);
+
+// 🍽️ Dining Table with 4 chairs
+const DiningTable = ({ position }) => (
+  <group position={position}>
+    {/* Table top */}
+    <mesh position={[0, 0.78, 0]} castShadow receiveShadow>
+      <boxGeometry args={[2.4, 0.08, 1.3]} />
+      <meshStandardMaterial color="#8B5E3C" roughness={0.65} />
+    </mesh>
+    {/* 4 legs */}
+    {[[-0.95, -0.52], [-0.95, 0.52], [0.95, -0.52], [0.95, 0.52]].map(([lx, lz], i) => (
+      <mesh key={i} position={[lx, 0.38, lz]} castShadow>
+        <cylinderGeometry args={[0.04, 0.04, 0.76, 8]} />
+        <meshStandardMaterial color="#6B4226" roughness={0.6} />
+      </mesh>
+    ))}
+    {/* 4 Chairs */}
+    {[[-1.35, 0, Math.PI], [1.35, 0, 0], [0, -0.9, -Math.PI / 2], [0, 0.9, Math.PI / 2]].map(([cx, cz, ry], i) => (
+      <group key={i} position={[cx, 0, cz]} rotation={[0, ry, 0]}>
+        <mesh position={[0, 0.42, 0]} castShadow><boxGeometry args={[0.48, 0.06, 0.48]} /><meshStandardMaterial color="#C9A96E" roughness={0.8} /></mesh>
+        <mesh position={[0, 0.75, -0.22]} castShadow><boxGeometry args={[0.44, 0.6, 0.05]} /><meshStandardMaterial color="#B8896A" roughness={0.8} /></mesh>
+        {[[-0.19, -0.19], [-0.19, 0.19], [0.19, -0.19], [0.19, 0.19]].map(([llx, llz], li) => (
+          <mesh key={li} position={[llx, 0.2, llz]}><cylinderGeometry args={[0.025, 0.025, 0.4, 6]} /><meshStandardMaterial color="#7A5C3A" roughness={0.6} /></mesh>
+        ))}
+      </group>
+    ))}
+  </group>
+);
+
+// 🛏️ Bed Component
+const Bed = ({ position, rotation = [0, 0, 0] }) => (
+  <group position={position} rotation={rotation}>
+    <mesh position={[0, 0.18, 0]} castShadow receiveShadow><boxGeometry args={[2.0, 0.22, 2.8]} /><meshStandardMaterial color="#6B4E2E" roughness={0.75} /></mesh>
+    <mesh position={[0, 0.35, 0.05]} castShadow><boxGeometry args={[1.85, 0.22, 2.55]} /><meshStandardMaterial color="#F0EAE0" roughness={0.9} /></mesh>
+    <mesh position={[0, 0.48, 0.3]} castShadow><boxGeometry args={[1.8, 0.12, 1.8]} /><meshStandardMaterial color="#C8A2C8" roughness={0.9} /></mesh>
+    <mesh position={[-0.42, 0.52, -0.95]} castShadow><boxGeometry args={[0.7, 0.14, 0.48]} /><meshStandardMaterial color="#FFFFFF" roughness={0.9} /></mesh>
+    <mesh position={[0.42, 0.52, -0.95]} castShadow><boxGeometry args={[0.7, 0.14, 0.48]} /><meshStandardMaterial color="#F5F0E8" roughness={0.9} /></mesh>
+    <mesh position={[0, 0.7, -1.42]} castShadow><boxGeometry args={[2.0, 0.9, 0.1]} /><meshStandardMaterial color="#5A3E2B" roughness={0.7} /></mesh>
+  </group>
+);
+
+// 🗄️ Wardrobe Component
+const Wardrobe = ({ position, rotation = [0, 0, 0] }) => (
+  <group position={position} rotation={rotation}>
+    <mesh position={[0, 1.2, 0]} castShadow receiveShadow><boxGeometry args={[2.2, 2.4, 0.65]} /><meshStandardMaterial color="#D4C5A9" roughness={0.6} /></mesh>
+    <mesh position={[-0.55, 1.2, 0.33]} castShadow><boxGeometry args={[1.05, 2.28, 0.04]} /><meshStandardMaterial color="#C4B49A" roughness={0.55} /></mesh>
+    <mesh position={[0.55, 1.2, 0.33]} castShadow><boxGeometry args={[1.05, 2.28, 0.04]} /><meshStandardMaterial color="#C4B49A" roughness={0.55} /></mesh>
+    <mesh position={[-0.08, 1.2, 0.37]}><boxGeometry args={[0.04, 0.16, 0.04]} /><meshStandardMaterial color="#8B7355" metalness={0.7} roughness={0.3} /></mesh>
+    <mesh position={[0.08, 1.2, 0.37]}><boxGeometry args={[0.04, 0.16, 0.04]} /><meshStandardMaterial color="#8B7355" metalness={0.7} roughness={0.3} /></mesh>
+    <mesh position={[0, 2.42, 0]}><boxGeometry args={[2.28, 0.08, 0.72]} /><meshStandardMaterial color="#BCA88C" roughness={0.5} /></mesh>
+  </group>
+);
+
+// 💄 Vanity / Makeup Table
+const VanityTable = ({ position, rotation = [0, 0, 0] }) => (
+  <group position={position} rotation={rotation}>
+    <mesh position={[0, 0.38, 0]} castShadow receiveShadow><boxGeometry args={[1.2, 0.76, 0.52]} /><meshStandardMaterial color="#E8DDD0" roughness={0.6} /></mesh>
+    <mesh position={[0, 0.77, 0]} castShadow><boxGeometry args={[1.25, 0.04, 0.56]} /><meshStandardMaterial color="#D4C4B0" roughness={0.5} /></mesh>
+    {/* Mirror */}
+    <mesh position={[0, 1.45, -0.24]} castShadow><boxGeometry args={[0.88, 1.1, 0.05]} /><meshStandardMaterial color="#8B7355" roughness={0.5} /></mesh>
+    <mesh position={[0, 1.45, -0.2]}><boxGeometry args={[0.78, 1.0, 0.02]} /><meshStandardMaterial color="#C8E0F0" metalness={0.9} roughness={0.05} /></mesh>
+    {/* Bottles */}
+    <mesh position={[-0.3, 0.85, 0.1]}><boxGeometry args={[0.08, 0.18, 0.06]} /><meshStandardMaterial color="#FFB6C1" roughness={0.2} metalness={0.3} /></mesh>
+    <mesh position={[-0.15, 0.85, 0.1]}><cylinderGeometry args={[0.035, 0.04, 0.14, 8]} /><meshStandardMaterial color="#DDA0DD" roughness={0.2} metalness={0.3} /></mesh>
+    {/* Stool */}
+    <mesh position={[0, 0.24, 0.6]} castShadow><cylinderGeometry args={[0.3, 0.28, 0.38, 12]} /><meshStandardMaterial color="#E8C5D0" roughness={0.85} /></mesh>
+    <mesh position={[0, 0.44, 0.6]} castShadow><cylinderGeometry args={[0.31, 0.31, 0.06, 12]} /><meshStandardMaterial color="#D4A8B8" roughness={0.8} /></mesh>
+  </group>
+);
+
+// 📚 Bookshelf
+const Bookshelf = ({ position, rotation = [0, 0, 0] }) => (
+  <group position={position} rotation={rotation}>
+    <mesh position={[0, 1.0, 0]} castShadow receiveShadow><boxGeometry args={[1.2, 2.0, 0.35]} /><meshStandardMaterial color="#8B6914" roughness={0.7} /></mesh>
+    {[0.3, 0.82, 1.34, 1.75].map((y, i) => (
+      <mesh key={i} position={[0, y, 0.01]}><boxGeometry args={[1.15, 0.04, 0.32]} /><meshStandardMaterial color="#A07820" roughness={0.6} /></mesh>
+    ))}
+    {[
+      [[-0.4, 0.55, 0.1], [0.12, 0.34, 0.1], '#C0392B'],
+      [[-0.22, 0.55, 0.1], [0.09, 0.34, 0.1], '#2980B9'],
+      [[-0.10, 0.55, 0.1], [0.1, 0.34, 0.1], '#27AE60'],
+      [[0.05, 0.55, 0.1], [0.08, 0.34, 0.1], '#8E44AD'],
+      [[-0.38, 1.08, 0.1], [0.14, 0.34, 0.1], '#E67E22'],
+      [[-0.18, 1.08, 0.1], [0.11, 0.34, 0.1], '#1ABC9C'],
+      [[0.05, 1.08, 0.1], [0.09, 0.34, 0.1], '#E74C3C'],
+      [[-0.38, 1.60, 0.1], [0.10, 0.34, 0.1], '#F39C12'],
+      [[-0.22, 1.60, 0.1], [0.12, 0.34, 0.1], '#2C3E50'],
+      [[0.00, 1.60, 0.1], [0.10, 0.34, 0.1], '#16A085'],
+    ].map(([pos, args, color], i) => (
+      <mesh key={i} position={pos}><boxGeometry args={args} /><meshStandardMaterial color={color} roughness={0.8} /></mesh>
+    ))}
+  </group>
+);
+
+// 🪑 Bedside Table
+const BedsideTable = ({ position }) => (
+  <group position={position}>
+    <mesh position={[0, 0.32, 0]} castShadow receiveShadow><boxGeometry args={[0.5, 0.64, 0.42]} /><meshStandardMaterial color="#C4A882" roughness={0.65} /></mesh>
+    <mesh position={[0, 0.65, 0]}><boxGeometry args={[0.54, 0.04, 0.46]} /><meshStandardMaterial color="#B89A72" roughness={0.55} /></mesh>
+    {/* Table lamp */}
+    <mesh position={[0, 0.78, 0]}><cylinderGeometry args={[0.02, 0.02, 0.26, 6]} /><meshStandardMaterial color="#8B7355" metalness={0.7} /></mesh>
+    <mesh position={[0, 0.92, 0]}><cylinderGeometry args={[0.12, 0.16, 0.18, 10]} /><meshStandardMaterial color="#F5E6C8" roughness={0.9} /></mesh>
+    <mesh position={[0, 0.9, 0]}><sphereGeometry args={[0.05, 8, 8]} /><meshStandardMaterial color="#FFF" emissive="#EAB308" emissiveIntensity={4} /></mesh>
   </group>
 );
 
@@ -622,32 +841,56 @@ const TVConsole = ({ position, rotation = [0, 0, 0] }) => (
 );
 
 // 💡 Cozy Smart Floor Lamp Component
-const FloorLamp = ({ position }) => (
-  <group position={position}>
-    {/* Base */}
-    <mesh position={[0, 0.05, 0]} castShadow>
-      <cylinderGeometry args={[0.3, 0.3, 0.08, 16]} />
-      <meshStandardMaterial color="#1E293B" metalness={0.9} roughness={0.1} />
-    </mesh>
-    {/* Pole */}
-    <mesh position={[0, 1.25, 0]} castShadow>
-      <cylinderGeometry args={[0.02, 0.02, 2.4, 8]} />
-      <meshStandardMaterial color="#1E293B" metalness={0.9} roughness={0.1} />
-    </mesh>
-    {/* Shade */}
-    <mesh position={[0, 2.35, 0]} castShadow>
-      <cylinderGeometry args={[0.22, 0.32, 0.45, 16]} />
-      <meshStandardMaterial color="#F8FAFC" roughness={0.9} />
-    </mesh>
-    {/* Glowing Smart Bulb */}
-    <mesh position={[0, 2.25, 0]}>
-      <sphereGeometry args={[0.12, 8, 8]} />
-      <meshStandardMaterial color="#FFF" emissive="#EAB308" emissiveIntensity={6} />
-    </mesh>
-    {/* Warm indoor lighting light source */}
-    <pointLight position={[0, 2.2, 0]} color="#FCD34D" intensity={1.8} distance={8} decay={1.5} castShadow />
-  </group>
-);
+const FloorLamp = ({ position, lightingMode = 'day' }) => {
+  const isOn = lightingMode === 'dim';
+  const isNight = lightingMode === 'night';
+  // Dim mode: full warm glow. Night mode: faint blue glow. Day: off.
+  const bulbColor = isNight ? '#b3cfff' : '#FCD34D';
+  const bulbEmissive = isNight ? '#90b8ff' : '#EAB308';
+  const bulbIntensity = isOn ? 8 : isNight ? 2 : 0;
+  const lightIntensity = isOn ? 12.0 : isNight ? 1.5 : 0;
+  const lightColor = isNight ? '#8ab4f8' : '#FCD34D';
+
+  return (
+    <group position={position}>
+      {/* Base */}
+      <mesh position={[0, 0.05, 0]} castShadow>
+        <cylinderGeometry args={[0.3, 0.3, 0.08, 16]} />
+        <meshStandardMaterial color="#8B7355" metalness={0.7} roughness={0.3} />
+      </mesh>
+      {/* Pole */}
+      <mesh position={[0, 1.25, 0]} castShadow>
+        <cylinderGeometry args={[0.02, 0.02, 2.4, 8]} />
+        <meshStandardMaterial color="#8B7355" metalness={0.7} roughness={0.3} />
+      </mesh>
+      {/* Shade */}
+      <mesh position={[0, 2.35, 0]} castShadow>
+        <cylinderGeometry args={[0.22, 0.32, 0.45, 16]} />
+        <meshStandardMaterial color="#F5E6C8" roughness={0.9} />
+      </mesh>
+      {/* Glowing Smart Bulb — reacts to mode */}
+      <mesh position={[0, 2.25, 0]}>
+        <sphereGeometry args={[0.12, 8, 8]} />
+        <meshStandardMaterial
+          color={bulbColor}
+          emissive={bulbEmissive}
+          emissiveIntensity={bulbIntensity}
+        />
+      </mesh>
+      {/* Light source — only emits in dim/night */}
+      {(isOn || isNight) && (
+        <pointLight
+          position={[0, 2.2, 0]}
+          color={lightColor}
+          intensity={lightIntensity}
+          distance={12}
+          decay={1.8}
+          castShadow
+        />
+      )}
+    </group>
+  );
+};
 
 // 3D Partition Walls Component depending on roomLayout and floorSize
 const PartitionWalls = ({ layout, size }) => {
@@ -656,24 +899,24 @@ const PartitionWalls = ({ layout, size }) => {
   const thickness = 0.25;
 
   const wallMat = (
-    <meshStandardMaterial color="#334155" roughness={0.6} metalness={0.1} />
+    <meshStandardMaterial color="#C8BFAE" roughness={0.6} metalness={0.05} />
   );
 
   // 1+1 layout walls
   const render1plus1 = () => (
     <group>
       {/* Middle dividing wall along Z axis at X = 0 (leaving a door gap in center) */}
-      <mesh position={[0, height / 2, -(half + 2) / 2]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, height, half - 2]} />
+      <mesh position={[0, height / 2, -(half + 0.5) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 0.5]} />
         {wallMat}
       </mesh>
-      <mesh position={[0, height / 2, (half + 2) / 2]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, height, half - 2]} />
+      <mesh position={[0, height / 2, (half + 0.5) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 0.5]} />
         {wallMat}
       </mesh>
       {/* Header over the doorway */}
       <mesh position={[0, height - 0.25, 0]} castShadow>
-        <boxGeometry args={[thickness, 0.5, 4]} />
+        <boxGeometry args={[thickness, 0.5, 1.0]} />
         {wallMat}
       </mesh>
     </group>
@@ -683,37 +926,37 @@ const PartitionWalls = ({ layout, size }) => {
   const render2plus1 = () => (
     <group>
       {/* Main dividing wall separating Living Room (X < 0) from Bedrooms (X > 0) */}
-      {/* Divider wall on Z-axis with door gaps at Z=-3 and Z=3 */}
+      {/* Divider wall on Z-axis with door gaps at Z=-3.5 and Z=3.5 */}
       <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, height, 4]} />
+        <boxGeometry args={[thickness, height, 6.0]} />
         {wallMat}
       </mesh>
-      <mesh position={[0, height / 2, -(half + 5) / 2]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, height, half - 5]} />
+      <mesh position={[0, height / 2, -(half + 4.0) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 4.0]} />
         {wallMat}
       </mesh>
-      <mesh position={[0, height / 2, (half + 5) / 2]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, height, half - 5]} />
+      <mesh position={[0, height / 2, (half + 4.0) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 4.0]} />
         {wallMat}
       </mesh>
       {/* Headers over the doorways */}
-      <mesh position={[0, height - 0.25, -4]} castShadow>
-        <boxGeometry args={[thickness, 0.5, 2]} />
+      <mesh position={[0, height - 0.25, -3.5]} castShadow>
+        <boxGeometry args={[thickness, 0.5, 1.0]} />
         {wallMat}
       </mesh>
-      <mesh position={[0, height - 0.25, 4]} castShadow>
-        <boxGeometry args={[thickness, 0.5, 2]} />
+      <mesh position={[0, height - 0.25, 3.5]} castShadow>
+        <boxGeometry args={[thickness, 0.5, 1.0]} />
         {wallMat}
       </mesh>
 
       {/* Bedroom divider wall (along X-axis at Z = 0, for X > 0) */}
-      <mesh position={[(half + 2) / 2, height / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[half - 2, height, thickness]} />
+      <mesh position={[(half + 1.0) / 2, height / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[half - 1.0, height, thickness]} />
         {wallMat}
       </mesh>
       {/* Header over bedroom door */}
-      <mesh position={[1, height - 0.25, 0]} castShadow>
-        <boxGeometry args={[2, 0.5, thickness]} />
+      <mesh position={[0.5, height - 0.25, 0]} castShadow>
+        <boxGeometry args={[1.0, 0.5, thickness]} />
         {wallMat}
       </mesh>
     </group>
@@ -723,26 +966,30 @@ const PartitionWalls = ({ layout, size }) => {
   const render3plus1 = () => (
     <group>
       {/* Living room divider at X = -half / 3 */}
-      <mesh position={[-half / 3, height / 2, -(half + 2) / 2]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, height, half - 2]} />
+      <mesh position={[-half / 3, height / 2, -(half + 0.5) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 0.5]} />
         {wallMat}
       </mesh>
-      <mesh position={[-half / 3, height / 2, (half + 2) / 2]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, height, half - 2]} />
+      <mesh position={[-half / 3, height / 2, (half + 0.5) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 0.5]} />
         {wallMat}
       </mesh>
       <mesh position={[-half / 3, height - 0.25, 0]} castShadow>
-        <boxGeometry args={[thickness, 0.5, 4]} />
+        <boxGeometry args={[thickness, 0.5, 1.0]} />
         {wallMat}
       </mesh>
 
       {/* Corridor walls on right side */}
-      <mesh position={[half / 3, height / 2, -half / 2]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, height, half - 1]} />
+      <mesh position={[half / 3, height / 2, -(half + 0.5) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 0.5]} />
         {wallMat}
       </mesh>
-      <mesh position={[half / 3, height / 2, half / 2]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, height, half - 1]} />
+      <mesh position={[half / 3, height / 2, (half + 0.5) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 0.5]} />
+        {wallMat}
+      </mesh>
+      <mesh position={[half / 3, height - 0.25, 0]} castShadow>
+        <boxGeometry args={[thickness, 0.5, 1.0]} />
         {wallMat}
       </mesh>
 
@@ -764,6 +1011,89 @@ const PartitionWalls = ({ layout, size }) => {
   if (layout === '2+1') return render2plus1();
   if (layout === '3+1') return render3plus1();
   return null; // 1+0 (Studio) - fully open space
+};
+
+// 3D Interactive Door Component that opens when player is close
+const InteractiveDoor = ({ position, baseRotation = 0, playerRef }) => {
+  const doorRef = useRef();
+  const [isOpen, setIsOpen] = useState(false);
+
+  useFrame(() => {
+    if (!playerRef.current || !doorRef.current) return;
+    
+    // Calculate distance between door center and player
+    const doorWorldPos = new THREE.Vector3(...position);
+    const distance = doorWorldPos.distanceTo(playerRef.current.position);
+    
+    const shouldBeOpen = distance < 2.8;
+    if (shouldBeOpen !== isOpen) {
+      setIsOpen(shouldBeOpen);
+    }
+
+    const targetRotation = shouldBeOpen ? Math.PI / 2.2 : 0; // open 80 degrees
+    doorRef.current.rotation.y = THREE.MathUtils.lerp(doorRef.current.rotation.y, targetRotation, 0.12);
+  });
+
+  return (
+    <group position={position} rotation={[0, baseRotation, 0]}>
+      {/* Hinge/Pivot group */}
+      <group ref={doorRef}>
+        {/* Door panel: width 1.0, height 2.0, thickness 0.08. Pivoted at the left edge (X = 0) */}
+        <mesh position={[0.5, 1.0, 0]} castShadow receiveShadow>
+          <boxGeometry args={[1.0, 2.0, 0.08]} />
+          <meshStandardMaterial color="#8B4513" roughness={0.8} metalness={0.05} />
+        </mesh>
+        {/* Gold Door Handle */}
+        <mesh position={[0.9, 1.0, 0.06]} castShadow>
+          <sphereGeometry args={[0.04, 8, 8]} />
+          <meshStandardMaterial color="#EAB308" metalness={0.9} roughness={0.1} />
+        </mesh>
+        <mesh position={[0.9, 1.0, -0.06]} castShadow>
+          <sphereGeometry args={[0.04, 8, 8]} />
+          <meshStandardMaterial color="#EAB308" metalness={0.9} roughness={0.1} />
+        </mesh>
+      </group>
+    </group>
+  );
+};
+
+// Doors Component mapping doors by layout
+const Doors = ({ layout, size, playerRef }) => {
+  const half = size / 2;
+  
+  if (layout === '1+1') {
+    return (
+      <group>
+        {/* Door on the partition wall gap at X = 0, Z = 0 */}
+        <InteractiveDoor position={[0, 0, -0.5]} baseRotation={-Math.PI / 2} playerRef={playerRef} />
+      </group>
+    );
+  }
+
+  if (layout === '2+1') {
+    return (
+      <group>
+        {/* Main living room divider doors */}
+        <InteractiveDoor position={[0, 0, -4.0]} baseRotation={-Math.PI / 2} playerRef={playerRef} />
+        <InteractiveDoor position={[0, 0, 3.0]} baseRotation={-Math.PI / 2} playerRef={playerRef} />
+        {/* Bedroom divider door - hinge moved to the right wall side to prevent clipping */}
+        <InteractiveDoor position={[1.0, 0, 0]} baseRotation={Math.PI} playerRef={playerRef} />
+      </group>
+    );
+  }
+
+  if (layout === '3+1') {
+    return (
+      <group>
+        {/* Living room divider door */}
+        <InteractiveDoor position={[-half / 3, 0, -0.5]} baseRotation={-Math.PI / 2} playerRef={playerRef} />
+        {/* Corridor door */}
+        <InteractiveDoor position={[half / 3, 0, -0.5]} baseRotation={-Math.PI / 2} playerRef={playerRef} />
+      </group>
+    );
+  }
+
+  return null;
 };
 
 // Room Labels Component
@@ -849,8 +1179,8 @@ const RoomLabels = ({ layout, size }) => {
   return null;
 };
 
-// Advanced Multi-Character Player Component (Robot, Man, Woman, Child)
-const Player = ({ playerRef, characterType = 'robot', initialPosition = [0, 0.5, 0] }) => {
+// Advanced Multi-Character Player Component (Robot, Man, Woman, Child) with sliding AABB wall collision detection
+const Player = ({ playerRef, characterType = 'robot', initialPosition = [0, 0.5, 0], roomLayout = '2+1', floorSize = 18 }) => {
   const [, get] = useKeyboardControls();
   const speed = 5.5;
 
@@ -862,20 +1192,126 @@ const Player = ({ playerRef, characterType = 'robot', initialPosition = [0, 0.5,
   const bodyRef = useRef();
   const headRef = useRef();
 
+  // Analytical Collision Detection (sliding along wall boundaries)
+  const checkCollision = (x, z) => {
+    const half = floorSize / 2;
+    const r = 0.45; // player collision bounding cylinder radius
+
+    // 1. Boundary Check (outer walls)
+    if (x < -half + r || x > half - r || z < -half + r || z > half - r) {
+      return true;
+    }
+
+    // 2. Front Wall door gap check (center gap at X in [-0.9, 0.9])
+    if (z > half - 0.2 - r) {
+      if (x < -0.9 || x > 0.9) {
+        return true;
+      }
+    }
+
+    // 3. Partition Walls collisions
+    if (roomLayout === '1+1') {
+      // Divider at X = 0. Gap Z in [-1, 1].
+      if (Math.abs(x) < 0.15 + r) {
+        if (z < -1 || z > 1) {
+          return true;
+        }
+      }
+    }
+
+    if (roomLayout === '2+1') {
+      // Main divider at X = 0. Gap Z in [-5, -2] and [2, 5].
+      if (Math.abs(x) < 0.15 + r) {
+        if ((z > -2 && z < 2) || z < -5 || z > 5) {
+          return true;
+        }
+      }
+      // Bedroom divider at Z = 0 (X > 0). Corridor/door at X in [0, 2].
+      if (z > -0.15 - r && z < 0.15 + r) {
+        if (x > 2) {
+          return true;
+        }
+      }
+    }
+
+    if (roomLayout === '3+1') {
+      // Living room divider at X = -half / 3. Gap Z in [-1, 1].
+      const wallX1 = -half / 3;
+      if (Math.abs(x - wallX1) < 0.15 + r) {
+        if (z < -1 || z > 1) {
+          return true;
+        }
+      }
+      // Corridor wall at X = half / 3. Gap Z in [-0.5, 0.5].
+      const wallX2 = half / 3;
+      if (Math.abs(x - wallX2) < 0.15 + r) {
+        if (z < -0.5 || z > 0.5) {
+          return true;
+        }
+      }
+      // Horizontal dividers at Z = -half / 3 and Z = half / 3 (for X > half/3)
+      const wallZ1 = -half / 3;
+      const wallZ2 = half / 3;
+      if (x > half / 3) {
+        if (Math.abs(z - wallZ1) < 0.15 + r || Math.abs(z - wallZ2) < 0.15 + r) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
   useFrame((state, delta) => {
     if (!playerRef.current) return;
-    
+
     const { forward, backward, left, right } = get();
-    const velocity = new THREE.Vector3();
-
-    if (forward) velocity.z -= 1;
-    if (backward) velocity.z += 1;
-    if (left) velocity.x -= 1;
-    if (right) velocity.x += 1;
-
     const isMoving = forward || backward || left || right;
-    velocity.normalize().multiplyScalar(speed * delta);
-    playerRef.current.position.add(velocity);
+
+    if (isMoving) {
+      // Camera's forward direction — projected onto the ground plane (ignore pitch)
+      const camForward = new THREE.Vector3();
+      state.camera.getWorldDirection(camForward);
+      camForward.y = 0;
+      camForward.normalize();
+
+      // Camera's right direction = camForward × worldUp
+      const camRight = new THREE.Vector3()
+        .crossVectors(camForward, new THREE.Vector3(0, 1, 0))
+        .normalize();
+
+      // Build movement direction from key inputs relative to camera orientation
+      const moveDir = new THREE.Vector3();
+      if (forward)  moveDir.addScaledVector(camForward,  1);  // W → toward camera's forward
+      if (backward) moveDir.addScaledVector(camForward, -1);  // S → away from camera
+      if (right)    moveDir.addScaledVector(camRight,    1);  // D → camera's right
+      if (left)     moveDir.addScaledVector(camRight,   -1);  // A → camera's left
+
+      if (moveDir.lengthSq() > 0) {
+        moveDir.normalize().multiplyScalar(speed * delta);
+
+        const currentPos = playerRef.current.position.clone();
+
+        // Slide-collision: try X and Z separately
+        let newX = currentPos.x + moveDir.x;
+        if (checkCollision(newX, currentPos.z)) newX = currentPos.x;
+
+        let newZ = currentPos.z + moveDir.z;
+        if (checkCollision(currentPos.x, newZ)) newZ = currentPos.z;
+
+        playerRef.current.position.x = newX;
+        playerRef.current.position.z = newZ;
+
+        // Rotate character to face movement direction
+        const angle = Math.atan2(moveDir.x, moveDir.z);
+        playerRef.current.rotation.y = THREE.MathUtils.lerp(
+          playerRef.current.rotation.y,
+          angle,
+          0.2
+        );
+      }
+    }
+
     
     const time = state.clock.getElapsedTime();
 
@@ -1438,11 +1874,18 @@ const MetaHome = () => {
   const [selectedTransformId, setSelectedTransformId] = useState(null);
   const [orbitEnabled, setOrbitEnabled] = useState(true);
   const [characterType, setCharacterType] = useState('robot');
+  const [lightingMode, setLightingMode] = useState('dim');
 
   useEffect(() => {
-    // Initialize position mapping for any devices that don't have a position yet
+    // Load persisted positions from localStorage first
+    let saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem('voltify_device_positions') || '{}');
+    } catch(e) {}
+
+    // Initialize position mapping: use saved if exists, otherwise calculate default
     setDevicePositionsMap(prev => {
-      const updated = { ...prev };
+      const updated = { ...saved, ...prev };
       devices.forEach((device, index) => {
         if (updated[device.id] === undefined) {
           updated[device.id] = getDevicePosition(device, roomLayout, floorSize, index);
@@ -1513,25 +1956,80 @@ const MetaHome = () => {
          <span className="text-white font-bold text-sm">Sistem Aktif ({devices.length} Cihaz)</span>
       </div>
 
+      {/* Lighting Mode Selector */}
+      <div className="absolute bottom-6 left-6 z-10 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-lg flex items-center gap-2">
+        <span className="text-white/90 text-xs font-black mr-1 uppercase">Işık Ambiyansı:</span>
+        <button 
+          onClick={() => setLightingMode('day')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${lightingMode === 'day' ? 'bg-[#4C811F] text-white shadow' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+        >
+          ☀️ Gündüz
+        </button>
+        <button 
+          onClick={() => setLightingMode('dim')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${lightingMode === 'dim' ? 'bg-[#D97706] text-white shadow' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+        >
+          🕯️ Loş Ambiyans
+        </button>
+        <button 
+          onClick={() => setLightingMode('night')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${lightingMode === 'night' ? 'bg-[#6366F1] text-white shadow' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+        >
+          🌌 Gece Modu
+        </button>
+      </div>
+
       {/* 3D Canvas */}
       <KeyboardControls map={keyboardMap}>
         <Canvas shadows camera={{ position: [0, 10, 10], fov: 50 }}>
           <CameraController playerRef={playerRef} enabled={orbitEnabled} />
           <Sky sunPosition={[100, 20, 100]} turbidity={0.1} rayleigh={0.5} />
-          <ambientLight intensity={0.5} />
-          <directionalLight castShadow position={[10, 20, 10]} intensity={1.5} shadow-mapSize={[1024, 1024]} />
+          {/* Dynamic Lights based on lightingMode */}
+          {lightingMode === 'day' && (
+            <>
+              {/* Bright daylight: strong ambient + warm sun directional */}
+              <ambientLight intensity={1.2} color="#fffef8" />
+              <directionalLight castShadow position={[15, 25, 10]} intensity={2.2} color="#fff9e6" shadow-mapSize={[2048, 2048]} />
+              <hemisphereLight args={['#e8f4ff', '#d4b896', 0.5]} />
+            </>
+          )}
+          {lightingMode === 'dim' && (
+            <>
+              {/* Cozy ambiance: very low ambient + warm lamp pools */}
+              <ambientLight intensity={0.08} color="#ffd1a9" />
+              <directionalLight castShadow position={[10, 20, 10]} intensity={0.15} color="#ffe4cc" shadow-mapSize={[1024, 1024]} />
+              {/* Warm ceiling pools in each room zone */}
+              <pointLight position={[salonX, 2.8, 0]} intensity={8.0} color="#ff8c2a" distance={14} decay={1.5} castShadow />
+              <pointLight position={[halfSize - 3, 2.8, -2.5]} intensity={6.0} color="#ffaa55" distance={10} decay={1.5} castShadow />
+              <pointLight position={[halfSize - 3, 2.8, 2.5]} intensity={6.0} color="#ffaa55" distance={10} decay={1.5} castShadow />
+            </>
+          )}
+          {lightingMode === 'night' && (
+            <>
+              {/* Night: dim blue moonlight ambient — not pitch black */}
+              <ambientLight intensity={0.18} color="#1a2744" />
+              <directionalLight castShadow position={[-10, 20, -5]} intensity={0.25} color="#6ea8f7" shadow-mapSize={[1024, 1024]} />
+              {/* Soft fill lights so the room stays readable */}
+              <pointLight position={[salonX, 2.8, 0]} intensity={3.0} color="#3b6fd4" distance={18} decay={1.5} />
+              <pointLight position={[halfSize - 3, 2.8, 0]} intensity={2.5} color="#5b3fd4" distance={14} decay={1.5} />
+            </>
+          )}
           
-          {/* Custom Floor (Chic dark slate parquet style) */}
+          {/* Parquet Floor — warm brown wooden planks */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
             <planeGeometry args={[floorSize + 30, floorSize + 30]} />
-            <meshStandardMaterial color="#1E293B" roughness={0.85} metalness={0.1} />
-            <gridHelper args={[floorSize + 30, floorSize + 30, '#334155', '#334155']} rotation={[Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} />
+            <meshStandardMaterial color="#7B4F2E" roughness={0.75} metalness={0.05} />
+          </mesh>
+          {/* Inner floor — slightly lighter warm parquet inside the house */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
+            <planeGeometry args={[floorSize - 0.8, floorSize - 0.8]} />
+            <meshStandardMaterial color="#A0693A" roughness={0.7} metalness={0.04} />
           </mesh>
 
           {/* Cozy Room Carpet under sofa and coffee table */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[salonX, 0.02, -0.5]} receiveShadow>
             <planeGeometry args={[5.2, 6.2]} />
-            <meshStandardMaterial color="#2E4C3E" roughness={0.95} />
+            <meshStandardMaterial color="#C97B4B" roughness={0.95} />
           </mesh>
 
           {/* Room Walls (Premium charcoal wood panel style) */}
@@ -1551,30 +2049,62 @@ const MetaHome = () => {
             <meshStandardMaterial color="#0F172A" roughness={0.7} />
           </mesh>
 
+          {/* Front Wall with a doorway for the front door */}
+          <mesh position={[-(halfSize + 0.5) / 2, 2.5, halfSize]} receiveShadow castShadow>
+            <boxGeometry args={[floorSize - 1.0, 5, 0.4]} />
+            <meshStandardMaterial color="#0F172A" roughness={0.7} />
+          </mesh>
+          <mesh position={[(halfSize + 0.5) / 2, 2.5, halfSize]} receiveShadow castShadow>
+            <boxGeometry args={[floorSize - 1.0, 5, 0.4]} />
+            <meshStandardMaterial color="#0F172A" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 4.5, halfSize]} castShadow>
+            <boxGeometry args={[1.0, 1.0, 0.4]} />
+            <meshStandardMaterial color="#E8DDD0" roughness={0.5} />
+          </mesh>
+
           {/* 3D Dynamic Partition Walls based on roomLayout */}
           <PartitionWalls layout={roomLayout} size={floorSize} />
+
+          {/* Doors (automatically swings open when player gets close) */}
+          <Doors layout={roomLayout} size={floorSize} playerRef={playerRef} />
+          
+          {/* Main Front Door */}
+          <InteractiveDoor position={[-0.5, 0, halfSize]} baseRotation={0} playerRef={playerRef} />
 
           {/* Room Labels */}
           <RoomLabels layout={roomLayout} size={floorSize} />
 
-          {/* Voltify Smart Energy Neon Lighting Tubes along the wall tops */}
+          {/* Voltify Smart Energy Neon Lighting Tubes — brightness depends on mode */}
           <mesh position={[0, 4.8, -halfSize + 0.2]} castShadow>
             <boxGeometry args={[floorSize - 0.2, 0.06, 0.06]} />
-            <meshStandardMaterial color="#10B981" emissive="#10B981" emissiveIntensity={3} />
+            <meshStandardMaterial
+              color="#10B981"
+              emissive="#10B981"
+              emissiveIntensity={lightingMode === 'day' ? 1.5 : lightingMode === 'night' ? 5 : 2}
+            />
           </mesh>
           <mesh position={[-halfSize + 0.2, 4.8, 0]} castShadow>
             <boxGeometry args={[0.06, 0.06, floorSize - 0.2]} />
-            <meshStandardMaterial color="#06B6D4" emissive="#06B6D4" emissiveIntensity={3} />
+            <meshStandardMaterial
+              color="#06B6D4"
+              emissive="#06B6D4"
+              emissiveIntensity={lightingMode === 'day' ? 1.5 : lightingMode === 'night' ? 5 : 2}
+            />
           </mesh>
           <mesh position={[halfSize - 0.2, 4.8, 0]} castShadow>
             <boxGeometry args={[0.06, 0.06, floorSize - 0.2]} />
-            <meshStandardMaterial color="#06B6D4" emissive="#06B6D4" emissiveIntensity={3} />
+            <meshStandardMaterial
+              color="#06B6D4"
+              emissive="#06B6D4"
+              emissiveIntensity={lightingMode === 'day' ? 1.5 : lightingMode === 'night' ? 5 : 2}
+            />
           </mesh>
 
           {/* Furniture Elements */}
           <CozyCouch position={[salonX, 0, 1.8]} rotation={[0, Math.PI, 0]} />
           <TVConsole position={[salonX, 0, -halfSize + 0.8]} />
-          <FloorLamp position={[salonX + 2.0, 0, 1.6]} />
+          <FloorLamp position={[salonX + 2.0, 0, 1.6]} lightingMode={lightingMode} />
           
           {/* Wooden Coffee Table */}
           <group position={[salonX, 0, -1.2]}>
@@ -1601,13 +2131,56 @@ const MetaHome = () => {
             </mesh>
           </group>
 
-          {/* Potted Plants for Nature Vibes (Dynamically set to room corners) */}
+          {/* Potted Plants */}
           <PottedPlant position={[-halfSize + 1.5, 0, -halfSize + 1.5]} />
           <PottedPlant position={[halfSize - 1.5, 0, -halfSize + 1.5]} />
           <PottedPlant position={[-halfSize + 1.5, 0, halfSize - 1.5]} />
 
+          {/* 🖼️ Wall Paintings — Salon back wall */}
+          <WallPainting position={[salonX - 1.5, 2.2, -halfSize + 0.25]} color1="#F4C68D" color2="#5B8A6F" />
+          <WallPainting position={[salonX + 1.5, 2.2, -halfSize + 0.25]} width={1.0} height={0.7} color1="#ADC6E8" color2="#E8B4AD" />
+
+          {/* 🖼️ Paintings on left wall */}
+          <WallPainting position={[-halfSize + 0.25, 2.2, -2]} rotation={[0, Math.PI / 2, 0]} color1="#D4A5C9" color2="#8FAD7E" />
+          <WallPainting position={[-halfSize + 0.25, 2.2, 2.5]} rotation={[0, Math.PI / 2, 0]} width={1.0} height={0.65} color1="#F0D080" color2="#7098B8" />
+
+          {/* 🍽️ Dining Table — kitchen area (right side, front half) */}
+          <DiningTable position={[halfSize - 3.5, 0, halfSize - 3.0]} />
+
+          {/* 📚 Bookshelf — against right wall in bedroom zone */}
+          <Bookshelf position={[halfSize - 0.6, 0, -3.5]} rotation={[0, -Math.PI / 2, 0]} />
+
+          {/* 🛏️ Beds — bedroom zones */}
+          {/* Bedroom 1 (positive Z bedroom in 2+1 layout) */}
+          <Bed position={[halfSize - 2.5, 0, 3.8]} rotation={[0, Math.PI / 2, 0]} />
+          <BedsideTable position={[halfSize - 0.8, 0, 2.8]} />
+          <BedsideTable position={[halfSize - 0.8, 0, 4.8]} />
+
+          {/* Bedroom 2 (negative Z bedroom in 2+1 layout) */}
+          <Bed position={[halfSize - 2.5, 0, -3.8]} rotation={[0, Math.PI / 2, 0]} />
+          <BedsideTable position={[halfSize - 0.8, 0, -2.8]} />
+
+          {/* 🗄️ Wardrobes in bedrooms */}
+          <Wardrobe position={[halfSize - 1.2, 0, 5.8]} rotation={[0, Math.PI / 2, 0]} />
+          <Wardrobe position={[halfSize - 1.2, 0, -5.8]} rotation={[0, Math.PI / 2, 0]} />
+
+          {/* 💄 Vanity Tables in bedrooms */}
+          <VanityTable position={[halfSize - 3.8, 0, 5.5]} rotation={[0, Math.PI, 0]} />
+          <VanityTable position={[halfSize - 3.8, 0, -5.5]} rotation={[0, Math.PI, 0]} />
+
+          {/* 🖼️ Bedroom wall art */}
+          <WallPainting position={[halfSize - 0.25, 2.2, 3.8]} rotation={[0, -Math.PI / 2, 0]} width={1.1} height={0.75} color1="#C8A2C8" color2="#E8DDD0" />
+          <WallPainting position={[halfSize - 0.25, 2.2, -3.8]} rotation={[0, -Math.PI / 2, 0]} width={1.1} height={0.75} color1="#ADC6E8" color2="#B8D4A8" />
+
+
           {/* Player */}
-          <Player playerRef={playerRef} characterType={characterType} initialPosition={[salonX, 0.5, 0]} />
+          <Player 
+            playerRef={playerRef} 
+            characterType={characterType} 
+            initialPosition={[salonX, 0.5, 0]} 
+            roomLayout={roomLayout} 
+            floorSize={floorSize} 
+          />
 
           {/* Dynamic Devices based on specific Home data */}
           {devices.map((device, index) => {
@@ -1627,6 +2200,15 @@ const MetaHome = () => {
                 status={device.isAnomalous ? "Hata" : "Açık"} 
                 wattage={`${device.currentWattage}W`} 
                 color={getDeviceColor(device.type)}
+                onPositionChange={(newPos) => {
+                  setDevicePositionsMap(prev => ({ ...prev, [device.id]: newPos }));
+                  try {
+                    const saved = JSON.parse(localStorage.getItem('voltify_device_positions') || '{}');
+                    saved[device.id] = newPos;
+                    localStorage.setItem('voltify_device_positions', JSON.stringify(saved));
+                  } catch(e) {}
+                  setSelectedTransformId(null);
+                }}
               />
             );
           })}
