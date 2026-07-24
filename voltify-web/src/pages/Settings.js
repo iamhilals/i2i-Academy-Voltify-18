@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Bell, Shield, Save, CheckCircle2, Camera, Phone, Sparkles, RefreshCw, KeyRound } from 'lucide-react';
+import { User, Mail, Bell, Shield, Save, CheckCircle2, Camera, Phone, Sparkles, KeyRound } from 'lucide-react';
 import { authService } from '../services/authService';
 
 const AVATAR_SEEDS = [

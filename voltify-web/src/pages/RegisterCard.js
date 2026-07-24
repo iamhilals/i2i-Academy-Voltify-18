@@ -169,21 +169,12 @@ export default function RegisterCard({ isDark, onGoLogin }) {
       setLoading(false);
       navigate('/dashboard');
     } catch (err) {
-      console.warn('Backend register unavailable or returned error, falling back to demo registration:', err);
-      localStorage.setItem('voltify_token', 'demo-jwt-token');
-      localStorage.setItem('voltify_user', JSON.stringify({
-        username,
-        fullName,
-        firstName,
-        lastName,
-        email,
-        phone,
-        avatar: avatarSeed,
-        role: 'USER'
-      }));
-      window.dispatchEvent(new Event('voltify_user_updated'));
+      // Kayıt başarısız: sahte oturum açma yerine kullanıcıya net hata göster
+      const msg = err?.response?.data?.message
+        || (err?.response?.data && typeof err.response.data === 'object' ? Object.values(err.response.data)[0] : null)
+        || 'Kayıt başarısız oldu. Lütfen bilgilerinizi kontrol edip tekrar deneyin.';
+      setError(msg);
       setLoading(false);
-      navigate('/dashboard');
     }
   };
 

@@ -1,5 +1,7 @@
 package com.voltify.core.config;
 
+import java.util.ArrayList;
+
 import org.apache.ignite.Ignite;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.configuration.CacheConfiguration;
@@ -7,6 +9,7 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import jakarta.annotation.PreDestroy;
+import com.voltify.core.ignite.ApplianceReading;
 import com.voltify.core.ignite.HomeLiveState;
 
 @Configuration
@@ -27,8 +30,20 @@ public class IgniteConfig {
     
         // Cache 2: Cihaz breach counter
         CacheConfiguration<Long, Integer> breachCounterCacheCfg = new CacheConfiguration<>("applianceBreachCounter");
-    
-        cfg.setCacheConfiguration(homeStateCacheCfg, breachCounterCacheCfg);
+
+        // Cache 3: Cihaz anlık watt değeri (canlı UI için)
+        CacheConfiguration<Long, Double> applianceWattCacheCfg = new CacheConfiguration<>("applianceLiveWatt");
+
+        // Cache 4: Cihaz geçmiş tamponu (dönen 24 saatlik pencere - grafik geçmişi için)
+        CacheConfiguration<Long, ArrayList<ApplianceReading>> applianceHistoryCacheCfg =
+                new CacheConfiguration<>("applianceHistory");
+
+        // Cache 5: Cihaz kümülatif watt toplamı (toplam enerji/maliyet için)
+        CacheConfiguration<Long, Double> applianceCumulativeWattCacheCfg =
+                new CacheConfiguration<>("applianceCumulativeWatt");
+
+        cfg.setCacheConfiguration(homeStateCacheCfg, breachCounterCacheCfg,
+                applianceWattCacheCfg, applianceHistoryCacheCfg, applianceCumulativeWattCacheCfg);
     
         this.ignite = Ignition.start(cfg);
         return this.ignite;

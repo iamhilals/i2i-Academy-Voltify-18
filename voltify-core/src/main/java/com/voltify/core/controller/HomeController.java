@@ -21,6 +21,7 @@ import com.voltify.core.dto.HomeUpdateRequest;
 import com.voltify.core.entity.Appliance;
 import com.voltify.core.entity.ConsumptionSnapshot;
 import com.voltify.core.entity.Home;
+import com.voltify.core.ignite.ApplianceReading;
 import com.voltify.core.service.HomeService;
 
 @RestController
@@ -85,5 +86,14 @@ public class HomeController {
     public ResponseEntity<Void> deleteAppliance(@PathVariable Long homeId, @PathVariable Long applianceId) {
         homeService.deleteAppliance(homeId, applianceId);
         return ResponseEntity.noContent().build();
+    }
+
+    // Cihazın gerçek tüketim geçmişi (canlı grafik için). minutes: 60=1s, 360=6s, 1440=24s
+    @GetMapping("/{homeId}/appliances/{applianceId}/readings")
+    public ResponseEntity<List<ApplianceReading>> getApplianceReadings(
+            @PathVariable Long homeId,
+            @PathVariable Long applianceId,
+            @RequestParam(defaultValue = "1440") int minutes) {
+        return ResponseEntity.ok(homeService.getApplianceReadings(homeId, applianceId, minutes));
     }
 }

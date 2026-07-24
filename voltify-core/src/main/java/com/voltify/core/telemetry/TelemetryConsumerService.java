@@ -67,10 +67,20 @@ public class TelemetryConsumerService {
         if (applOpt.isEmpty()) return;
 
         Appliance appliance = applOpt.get();
-        double safeLimit = appliance.getSafePowerLimit();
+        double safeLimit = appliance.getSafePowerLimit() != null ? appliance.getSafePowerLimit() : 1500.0;
+
+        // Canlı UI için cihazın son watt değerini Ignite'a yaz (sub-ms okuma)
+        igniteService.putApplianceWatt(applianceId, watt);
+        // Cihaz geçmiş tamponuna kaydet (grafiğin 1s/6s/24s geçmişi için, throttle'lı)
+        igniteService.recordApplianceReading(applianceId, watt);
+        // Kümülatif toplam (toplam kWh/maliyet için)
+        igniteService.addApplianceCumulativeWatt(applianceId, watt);
 
         if (watt > safeLimit) {
             int newCount = igniteService.incrementBreachCounter(applianceId);
+            // Sadece sayaç tam olarak eşiğe ulaştığında tetikle. Sonraki ihlaller
+            // sayacı 4, 5, 6... yapar ve bir daha eşiğe eşit olmaz; cihaz normale
+            // dönüp sayaç sıfırlanana kadar tekrar alarm üretilmez.
             if (newCount == ANOMALY_THRESHOLD) {
                 // Anomali tespit edildi - EventLog kaydet
                 EventLog log = new EventLog();
@@ -87,12 +97,6 @@ public class TelemetryConsumerService {
                 // Eco-Pet Anomali Cezası Uygulama
                 if (appliance.getHome().getOwner() != null) {
                     ecoPetService.applyAnomalyPenalty(appliance.getHome().getOwner().getId(), 10);
-                }
-
-                // Sayacı çok büyük bir sayıya çıkar ki tekrar 3'e ulaşamasın.
-                // Cihaz normale döner de sayaç sıfırlanırsa (else bloğunda), tekrar 3'e ulaşabilir - bu zaten yeni bir olaydır.
-                for (int i = 0; i < 1000; i++) {
-                    igniteService.incrementBreachCounter(applianceId);
                 }
             }
         } else {

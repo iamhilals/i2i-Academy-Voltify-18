@@ -39,11 +39,12 @@ public class BillingLedger {
     private Boolean isPenaltyActive = false;
 
     // %80 breach alerti daha önce tetiklendi mi? (Aynı alerti tekrar göndermemek için)
-    @Column(nullable = false)
+    // Kolon adı açıkça belirtildi: rakam+büyük harf sınırı isimlendirme stratejisinde belirsizdir.
+    @Column(name = "breach80_notified", nullable = false)
     private Boolean breach80Notified = false;
 
     // %100 breach alerti daha önce tetiklendi mi?
-    @Column(nullable = false)
+    @Column(name = "breach100_notified", nullable = false)
     private Boolean breach100Notified = false;
 
     @Column(nullable = false)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutGrid, Server, Users, BarChart3, Zap, Settings, Brain, Atom, LogOut, Moon, Sun, Bell, CreditCard, Mail } from 'lucide-react';
+import { LayoutGrid, Server, BarChart3, Zap, Settings, Brain, Atom, LogOut, Moon, Sun, Bell, CreditCard, Mail } from 'lucide-react';
 import ChatbotSlideover from '../components/ChatbotSlideover';
 import MusicPlayerBar from '../components/MusicPlayerBar';
 import { authService } from '../services/authService';
@@ -100,19 +100,6 @@ const DashboardLayout = () => {
             >
               <Server className="w-5 h-5" />
               Cihazlar
-            </NavLink>
-            <NavLink
-              to="/dashboard/community"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 font-medium text-sm ${
-                  isActive
-                    ? 'bg-[#4C811F] text-white shadow-lg shadow-green-900/20'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-emerald-950/30 hover:text-gray-900 dark:hover:text-emerald-100'
-                }`
-              }
-            >
-              <Users className="w-5 h-5" />
-              Topluluk
             </NavLink>
             <NavLink
               to="/dashboard/statistics"
@@ -223,17 +210,6 @@ const DashboardLayout = () => {
           </div>
 
           <div className="flex items-center gap-6">
-            {/* Energy Points */}
-            <div className="flex items-center gap-3 bg-white dark:bg-[#1E271F] px-4 py-2 rounded-full shadow-sm border border-gray-100 dark:border-emerald-950/20">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                <Zap className="w-4 h-4 text-green-600" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Enerji Puanı</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">984 XP</span>
-              </div>
-            </div>
-
             {/* Profile */}
             <div 
               onClick={() => navigate('/dashboard/settings')}
@@ -244,8 +220,7 @@ const DashboardLayout = () => {
                 <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile.avatar}&backgroundColor=e2e8f0`} alt="Profile" className="w-full h-full object-cover" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-200 truncate max-w-[120px]">{userProfile.fullName}</span>
-                <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Seviye 42</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-gray-200 truncate max-w-[140px]">{userProfile.fullName}</span>
               </div>
             </div>
 

@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthLayout from './pages/AuthLayout';
 import DashboardLayout from './pages/DashboardLayout';
+import ToastHost from './components/ToastHost';
 
 // Hızlı açılış için sayfa bileşenlerini "Lazy Loading" ile yüklüyoruz (Route Code-Splitting)
 const HomeDashboard = lazy(() => import('./pages/HomeDashboard'));
@@ -25,6 +26,7 @@ const PageLoader = () => (
 function App() {
   return (
     <BrowserRouter>
+      <ToastHost />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />

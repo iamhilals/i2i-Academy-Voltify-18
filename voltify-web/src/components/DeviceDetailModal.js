@@ -1,6 +1,46 @@
-import React, { useState } from 'react';
-import { X, AlertTriangle, Zap, Activity, Clock, DollarSign, Power } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { X, AlertTriangle, Zap, Activity, DollarSign, Power } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { homeService } from '../services/homeService';
+
+// Seçilen aralık için grafik verisini GERÇEK ölçümlerden üretir:
+// - serverHistory: backend'in Ignite'ta tuttuğu 24 saatlik geçmiş (dakika çözünürlüklü)
+// - samples: modal açıkken 2 sn'de bir biriken canlı tampon (sağ uç)
+// İkisi birleştirilir, 30 kovaya bölünür. Gerçek veri olmayan kova boş (null) kalır
+// ve connectNulls ile köprülenir — hiçbir kısım artık modellenmez/uydurulmaz.
+const RANGE_MS = { '1h': 3600e3, '6h': 6 * 3600e3, '24h': 24 * 3600e3 };
+const BUCKETS = 30;
+
+function buildSeries(serverHistory, samples, range) {
+  const windowMs = RANGE_MS[range] || RANGE_MS['24h'];
+  const bucketMs = windowMs / BUCKETS;
+  const now = Date.now();
+
+  const merged = [
+    ...serverHistory.map((r) => ({ t: r.timestampMillis, watt: r.watt })),
+    ...samples,
+  ];
+
+  const data = [];
+  for (let i = 0; i < BUCKETS; i++) {
+    const end = now - (BUCKETS - 1 - i) * bucketMs;
+    const start = end - bucketMs;
+    const inBucket = merged.filter((p) => p.t > start && p.t <= end);
+    const wattage = inBucket.length
+      ? Math.round(inBucket.reduce((s, x) => s + x.watt, 0) / inBucket.length)
+      : null;
+    data.push({ time: fmtTime(end), wattage });
+  }
+  return data;
+}
+
+function minutesForRange(range) {
+  return range === '1h' ? 60 : range === '6h' ? 360 : 1440;
+}
+
+function fmtTime(ms) {
+  return new Date(ms).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+}
 
 // Returns image matching device type/name instead of hardcoding fridge
 const getDeviceImage = (type, name) => {
@@ -25,23 +65,58 @@ const getDeviceImage = (type, name) => {
   return 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?auto=format&fit=crop&q=80&w=400&h=500';
 };
 
-const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice }) => {
+const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice, homeId }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [range, setRange] = useState('1h');
+  const [samples, setSamples] = useState([]);
+  const [serverHistory, setServerHistory] = useState([]);
 
-  if (!isOpen || !device) return null; 
+  // En güncel gerçek watt değerini ref'te tut (sampler interval'ı bunu okur)
+  const deviceWattRef = useRef(0);
+  deviceWattRef.current = Math.round(device?.currentWattage || 0);
+
+  // Cihaz açıldığında/değiştiğinde tamponu sıfırla, 2 sn'de bir gerçek watt örnekle (sağ uç)
+  useEffect(() => {
+    if (!isOpen || !device) return undefined;
+    setSamples([{ t: Date.now(), watt: deviceWattRef.current }]);
+    const timer = setInterval(() => {
+      setSamples((prev) => {
+        const next = [...prev, { t: Date.now(), watt: deviceWattRef.current }];
+        return next.length > 1200 ? next.slice(-1200) : next;
+      });
+    }, 2000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, device?.id]);
+
+  // Backend'den GERÇEK cihaz geçmişini çek (seçilen aralığa göre) ve periyodik tazele
+  useEffect(() => {
+    if (!isOpen || !device || !homeId) return undefined;
+    let active = true;
+    const load = async () => {
+      try {
+        const rows = await homeService.getApplianceReadings(homeId, device.id, minutesForRange(range));
+        if (active) setServerHistory(Array.isArray(rows) ? rows : []);
+      } catch (e) {
+        // Hatalar api.js interceptor'ında toast olarak gösterilir
+      }
+    };
+    load();
+    const timer = setInterval(load, 20000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, device?.id, range, homeId]);
+
+  const chartData = useMemo(() => buildSeries(serverHistory, samples, range), [serverHistory, samples, range]);
+
+  if (!isOpen || !device) return null;
 
   const isOff = (device.currentWattage || 0) === 0;
-  const currWatt = device.currentWattage || 0;
-  const safeLimit = device.safePowerLimit || device.maxSafeWattage || 1500;
-
-  // Dynamic 24-Hour chart curve based on REAL current Wattage
-  const deviceChartData = [
-    { time: '08:00', wattage: isOff ? 0 : Math.round(currWatt * 0.8) },
-    { time: '12:00', wattage: isOff ? 0 : Math.round(currWatt * 0.95) },
-    { time: '16:00', wattage: isOff ? 0 : Math.round(currWatt * 1.15) },
-    { time: '20:00', wattage: isOff ? 0 : Math.round(currWatt * 1.0) },
-    { time: '24:00', wattage: isOff ? 0 : Math.round(currWatt * 0.6) },
-  ];
+  const currWatt = Math.round(device.currentWattage || 0);
+  const safeLimit = Math.round(device.safePowerLimit || device.maxSafeWattage || 1500);
 
   const handleToggle = async () => {
     if (!onToggleDevice) return;
@@ -137,24 +212,44 @@ const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice }) => {
                 <p className="text-2xl font-black text-[#4C811F]">{safeLimit}<span className="text-sm font-bold text-gray-400">W</span></p>
               </div>
               <div className="bg-gray-50 dark:bg-[#182119] p-4 rounded-2xl border border-gray-100 dark:border-emerald-950/20">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Clock className="w-3 h-3"/> Çalışma</p>
-                <p className="text-2xl font-black text-gray-900 dark:text-white">{isOff ? '0.0' : '14.5'}<span className="text-sm font-bold text-gray-400">s</span></p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Activity className="w-3 h-3"/> Toplam Tüketim</p>
+                <p className="text-2xl font-black text-gray-900 dark:text-white">{(device.totalKwh || 0).toFixed(2)}<span className="text-sm font-bold text-gray-400">kWh</span></p>
               </div>
               <div className="bg-gray-50 dark:bg-[#182119] p-4 rounded-2xl border border-gray-100 dark:border-emerald-950/20">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><DollarSign className="w-3 h-3"/> Tahmini Maliyet</p>
-                <p className="text-2xl font-black text-gray-900 dark:text-white">₺{isOff ? '0.00' : (currWatt * 0.028).toFixed(2)}<span className="text-sm font-bold text-gray-400">/g</span></p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><DollarSign className="w-3 h-3"/> Toplam Maliyet</p>
+                <p className="text-2xl font-black text-gray-900 dark:text-white">₺{(device.totalCost || 0).toFixed(2)}</p>
               </div>
             </div>
 
-            {/* Dynamic 24-Hour Device Consumption Chart */}
+            {/* Canlı Cihaz Tüketim Akışı - 1s / 6s / 24s aralıkları */}
             <div className="bg-white dark:bg-[#182119] border border-gray-100 dark:border-emerald-950/20 rounded-3xl p-6 shadow-sm mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Activity className="w-5 h-5 text-gray-400" />
-                <h3 className="font-bold text-gray-900 dark:text-white">24 Saatlik Cihaz Tüketimi (W)</h3>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-gray-400" />
+                  <h3 className="font-bold text-gray-900 dark:text-white">Cihaz Tüketim Akışı (W)</h3>
+                  <span className="flex items-center gap-1 text-[10px] font-black text-red-500 uppercase tracking-wider ml-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> Canlı
+                  </span>
+                </div>
+                <div className="flex gap-1 bg-gray-100 dark:bg-emerald-950/40 p-1 rounded-xl">
+                  {['1h', '6h', '24h'].map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRange(r)}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-black transition-colors ${
+                        range === r
+                          ? 'bg-white dark:bg-emerald-800 text-[#4C811F] dark:text-white shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                      }`}
+                    >
+                      {r === '1h' ? '1 Saat' : r === '6h' ? '6 Saat' : '24 Saat'}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="h-44 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={deviceChartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorDevice" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={device.isAnomalous ? '#EF4444' : '#3B82F6'} stopOpacity={0.3}/>
@@ -162,13 +257,19 @@ const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice }) => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 600 }} dy={10} />
+                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 600 }} minTickGap={28} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 600 }} />
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} />
-                    <Area type="monotone" dataKey="wattage" stroke={device.isAnomalous ? '#EF4444' : '#3B82F6'} strokeWidth={3} fillOpacity={1} fill="url(#colorDevice)" />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
+                      formatter={(value) => [`${value} W`, 'Tüketim']}
+                    />
+                    <Area type="monotone" dataKey="wattage" stroke={device.isAnomalous ? '#EF4444' : '#3B82F6'} strokeWidth={3} fillOpacity={1} fill="url(#colorDevice)" connectNulls isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
+              <p className="text-[10px] font-medium text-gray-400 mt-2 leading-relaxed">
+                Tamamı gerçek ölçüm: sağ uç canlı (2 sn), geçmiş ise backend'de kayıtlı cihaz verisinden çizilir. Geçmiş, sistem çalıştıkça 24 saate kadar dolar.
+              </p>
             </div>
 
             {/* Action Buttons - Real Persistence */}

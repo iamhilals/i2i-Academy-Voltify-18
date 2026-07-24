@@ -1,6 +1,7 @@
 package com.voltify.core.service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.voltify.core.dto.ApplianceStatus;
 import com.voltify.core.dto.HomeStatusResponse;
 import com.voltify.core.dto.HomeUpdateRequest;
 import com.voltify.core.entity.Appliance;
@@ -19,7 +21,10 @@ import com.voltify.core.entity.ConsumptionSnapshot;
 import com.voltify.core.entity.Home;
 import com.voltify.core.entity.User;
 import com.voltify.core.exception.ForbiddenException;
+import com.voltify.core.exception.ResourceNotFoundException;
+import com.voltify.core.ignite.ApplianceReading;
 import com.voltify.core.ignite.HomeLiveState;
+import com.voltify.core.repository.ApplianceRepository;
 import com.voltify.core.repository.BillingLedgerRepository;
 import com.voltify.core.repository.ConsumptionSnapshotRepository;
 import com.voltify.core.repository.HomeRepository;
@@ -28,6 +33,7 @@ import com.voltify.core.repository.HomeRepository;
 public class HomeService {
 
     private final HomeRepository homeRepository;
+    private final ApplianceRepository applianceRepository;
     private final BillingLedgerRepository billingLedgerRepository;
     private final ConsumptionSnapshotRepository consumptionSnapshotRepository;
     private final KafkaProducerService kafkaProducerService;
@@ -35,11 +41,13 @@ public class HomeService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public HomeService(HomeRepository homeRepository,
+                    ApplianceRepository applianceRepository,
                     BillingLedgerRepository billingLedgerRepository,
                     ConsumptionSnapshotRepository consumptionSnapshotRepository,
                     KafkaProducerService kafkaProducerService,
                     IgniteService igniteService) {
         this.homeRepository = homeRepository;
+        this.applianceRepository = applianceRepository;
         this.billingLedgerRepository = billingLedgerRepository;
         this.consumptionSnapshotRepository = consumptionSnapshotRepository;
         this.kafkaProducerService = kafkaProducerService;
@@ -65,10 +73,10 @@ public class HomeService {
             home.setBudgetQuotaTry(1500.0);
         }
         if (home.getBaseRate() == null) {
-            home.setBaseRate(2.4);
+            home.setBaseRate(2.07);
         }
         if (home.getPenaltyRate() == null) {
-            home.setPenaltyRate(4.8);
+            home.setPenaltyRate(5.18);
         }
         if (home.getSquareMeters() == null) {
             home.setSquareMeters(120);
@@ -113,7 +121,7 @@ public class HomeService {
     public HomeStatusResponse getHomeStatus(Long homeId) {
         // Önce evi PostgreSQL'de bul ve sahibi olduğumuzu doğrula
         Home home = homeRepository.findById(homeId)
-            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+            .orElseThrow(() -> new ResourceNotFoundException("Ev bulunamadı: " + homeId));
         assertOwnership(home);
 
         // Statik/kalıcı bilgileri PostgreSQL'den (Home entity'sinden) doldur
@@ -125,13 +133,34 @@ public class HomeService {
         response.setBudgetQuotaTry(home.getBudgetQuotaTry());
         response.setBaseRate(home.getBaseRate());
         response.setPenaltyRate(home.getPenaltyRate());
-        response.setAppliances(home.getAppliances());
         response.setSquareMeters(home.getSquareMeters());
         response.setRoomLayout(home.getRoomLayout());
 
-        // Anlık/canlı bilgileri Ignite'tan (sub-millisecond okuma) doldur
+        // Cihaz başına canlı durum: statik alanlar PostgreSQL'den, anlık watt & anomali Ignite'tan
+        List<ApplianceStatus> applianceStatuses = new ArrayList<>();
+        if (home.getAppliances() != null) {
+            for (Appliance appliance : home.getAppliances()) {
+                ApplianceStatus status = new ApplianceStatus();
+                status.setId(appliance.getId());
+                status.setName(appliance.getName());
+                status.setRoom(appliance.getRoom());
+                status.setType(appliance.getType());
+                status.setMaxSafeWattage(appliance.getSafePowerLimit() != null ? appliance.getSafePowerLimit() : 0.0);
+                status.setCurrentWattage(igniteService.getApplianceWatt(appliance.getId()));
+                status.setIsAnomalous(igniteService.isApplianceAnomalous(appliance.getId()));
+                double applKwh = igniteService.getApplianceTotalKwh(appliance.getId());
+                double rate = home.getBaseRate() != null ? home.getBaseRate() : 2.07;
+                status.setTotalKwh(round2(applKwh));
+                status.setTotalCost(round2(applKwh * rate));
+                applianceStatuses.add(status);
+            }
+        }
+        response.setAppliances(applianceStatuses);
+
+        // Ev geneli anlık/canlı bilgileri Ignite'tan (sub-millisecond okuma) doldur
         HomeLiveState liveState = igniteService.getOrCreateHomeState(homeId);
         response.setAccumulatedWatt(liveState.getAccumulatedWatt());
+        response.setTotalKwh(round2(liveState.getAccumulatedWatt() / IgniteService.WATT_SUM_TO_KWH));
         response.setCurrentBalance(liveState.getCurrentBalance());
         response.setIsPenaltyActive(liveState.getIsPenaltyActive());
         response.setLastUpdatedMillis(liveState.getLastUpdatedMillis());
@@ -139,21 +168,42 @@ public class HomeService {
         return response;
     }
 
+    // 2 ondalığa yuvarla
+    private static double round2(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
     // Şartname: Historical Trend Delivery - Geçmiş tüketim grafikleri için
     // PostgreSQL'deki günlük anlık görüntüleri (snapshot) döndürür (Pagination & Date Filter destekli)
     public List<ConsumptionSnapshot> getHomeHistory(Long homeId) {
         Home home = homeRepository.findById(homeId)
-            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+            .orElseThrow(() -> new ResourceNotFoundException("Ev bulunamadı: " + homeId));
         assertOwnership(home);
         return consumptionSnapshotRepository.findByHomeIdOrderBySnapshotDateAsc(homeId);
     }
 
     public Page<ConsumptionSnapshot> getHomeHistoryPage(Long homeId, int page, int size, LocalDate from, LocalDate to) {
         Home home = homeRepository.findById(homeId)
-            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+            .orElseThrow(() -> new ResourceNotFoundException("Ev bulunamadı: " + homeId));
         assertOwnership(home);
         Pageable pageable = PageRequest.of(page, size);
         return consumptionSnapshotRepository.findByHomeIdAndDateRange(homeId, from, to, pageable);
+    }
+
+    // Cihaz-bazlı GERÇEK tüketim geçmişi (Ignite dönen 24 saatlik pencere).
+    // Grafiğin 1s/6s/24s aralıklarını modelleme yerine gerçek veriyle besler.
+    public List<ApplianceReading> getApplianceReadings(Long homeId, Long applianceId, int minutes) {
+        Home home = homeRepository.findById(homeId)
+            .orElseThrow(() -> new ResourceNotFoundException("Ev bulunamadı: " + homeId));
+        assertOwnership(home);
+        boolean belongs = home.getAppliances() != null
+                && home.getAppliances().stream().anyMatch(a -> a.getId().equals(applianceId));
+        if (!belongs) {
+            throw new ResourceNotFoundException("Bu eve ait cihaz bulunamadı: " + applianceId);
+        }
+        int windowMinutes = Math.max(1, Math.min(minutes, 1440)); // 1 dk – 24 saat arası
+        long since = System.currentTimeMillis() - (long) windowMinutes * 60_000L;
+        return igniteService.getApplianceHistory(applianceId, since);
     }
 
     // Yardımcı: SecurityContextHolder'dan şu an giriş yapmış kullanıcıyı al
@@ -165,7 +215,7 @@ public class HomeService {
     @Transactional
     public Home updateHome(Long homeId, HomeUpdateRequest request) {
         Home home = homeRepository.findById(homeId)
-            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+            .orElseThrow(() -> new ResourceNotFoundException("Ev bulunamadı: " + homeId));
         assertOwnership(home);
 
         if (request.getName() != null) home.setName(request.getName());
@@ -184,7 +234,7 @@ public class HomeService {
     @Transactional
     public void deleteHome(Long homeId) {
         Home home = homeRepository.findById(homeId)
-            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+            .orElseThrow(() -> new ResourceNotFoundException("Ev bulunamadı: " + homeId));
         assertOwnership(home);
         homeRepository.delete(home);
     }
@@ -193,7 +243,7 @@ public class HomeService {
     @Transactional
     public Home addAppliance(Long homeId, Appliance appliance) {
         Home home = homeRepository.findById(homeId)
-            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+            .orElseThrow(() -> new ResourceNotFoundException("Ev bulunamadı: " + homeId));
         assertOwnership(home);
 
         appliance.setHome(home);
@@ -205,12 +255,12 @@ public class HomeService {
     @Transactional
     public void deleteAppliance(Long homeId, Long applianceId) {
         Home home = homeRepository.findById(homeId)
-            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+            .orElseThrow(() -> new ResourceNotFoundException("Ev bulunamadı: " + homeId));
         assertOwnership(home);
 
         boolean removed = home.getAppliances().removeIf(a -> a.getId().equals(applianceId));
         if (!removed) {
-            throw new RuntimeException("Appliance not found in this home: " + applianceId);
+            throw new ResourceNotFoundException("Bu eve ait cihaz bulunamadı: " + applianceId);
         }
         homeRepository.save(home);
     }
@@ -219,11 +269,11 @@ public class HomeService {
     @Transactional
     public Appliance updateAppliance(Long homeId, Long applianceId, Appliance updated) {
         Home home = homeRepository.findById(homeId)
-            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+            .orElseThrow(() -> new ResourceNotFoundException("Ev bulunamadı: " + homeId));
         assertOwnership(home);
 
         Appliance appliance = applianceRepository.findById(applianceId)
-            .orElseThrow(() -> new RuntimeException("Appliance not found: " + applianceId));
+            .orElseThrow(() -> new ResourceNotFoundException("Cihaz bulunamadı: " + applianceId));
 
         if (updated.getName() != null) appliance.setName(updated.getName());
         if (updated.getSafePowerLimit() != null) appliance.setSafePowerLimit(updated.getSafePowerLimit());
