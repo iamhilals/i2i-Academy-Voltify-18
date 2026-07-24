@@ -14,11 +14,16 @@ const AVATAR_SEEDS = [
 const Settings = () => {
   const initialUser = authService.getCurrentUser() || {};
 
+  const defaultUsername = initialUser.username || 'sude';
+  const defaultEmail = initialUser.email || `${defaultUsername}@voltify.com`;
+  const defaultPhone = initialUser.phone || '0532 100 20 30';
+  const defaultFullName = initialUser.fullName || defaultUsername;
+
   const [currentUser, setCurrentUser] = useState(initialUser);
-  const [fullName, setFullName] = useState(initialUser.fullName || initialUser.username || '');
-  const [email, setEmail] = useState(initialUser.email || '');
-  const [phone, setPhone] = useState(initialUser.phone || '');
-  const [username, setUsername] = useState(initialUser.username || '');
+  const [fullName, setFullName] = useState(defaultFullName);
+  const [email, setEmail] = useState(defaultEmail);
+  const [phone, setPhone] = useState(defaultPhone);
+  const [username, setUsername] = useState(defaultUsername);
   const [selectedAvatar, setSelectedAvatar] = useState(initialUser.avatar || 'Felix');
 
   // Password state
@@ -37,26 +42,28 @@ const Settings = () => {
   const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      if (user.fullName) setFullName(user.fullName);
-      else if (user.username) setFullName(user.username);
-      if (user.email !== undefined) setEmail(user.email);
-      if (user.phone !== undefined) setPhone(user.phone);
-      if (user.username !== undefined) setUsername(user.username);
-      if (user.avatar !== undefined) setSelectedAvatar(user.avatar);
-    }
+    const user = authService.getCurrentUser() || {};
+    const uname = user.username || 'sude';
+    const em = user.email || `${uname}@voltify.com`;
+    const ph = user.phone || '0532 100 20 30';
+    const fn = user.fullName || uname;
+
+    setCurrentUser(user);
+    setFullName(fn);
+    setEmail(em);
+    setPhone(ph);
+    setUsername(uname);
+    if (user.avatar) setSelectedAvatar(user.avatar);
   }, []);
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
     const updatedUser = {
       ...currentUser,
-      fullName,
-      email,
-      phone,
-      username,
+      fullName: fullName.trim() || username,
+      email: email.trim() || `${username}@voltify.com`,
+      phone: phone.trim() || '0532 100 20 30',
+      username: username.trim() || 'sude',
       avatar: selectedAvatar
     };
 

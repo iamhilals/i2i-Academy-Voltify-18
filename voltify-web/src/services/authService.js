@@ -7,14 +7,15 @@ export const authService = {
       localStorage.setItem('voltify_token', response.data.token);
       const data = response.data;
       const existingUser = JSON.parse(localStorage.getItem('voltify_user') || '{}');
+      const uname = data.username || username || 'sude';
       localStorage.setItem('voltify_user', JSON.stringify({
         ...existingUser,
-        username: data.username || username,
-        email: data.email || existingUser.email || '',
+        username: uname,
+        email: data.email || existingUser.email || `${uname}@voltify.com`,
         firstName: data.firstName || existingUser.firstName || '',
         lastName: data.lastName || existingUser.lastName || '',
-        fullName: data.fullName || (data.firstName ? `${data.firstName} ${data.lastName}` : (existingUser.fullName || username)),
-        phone: data.phoneNumber || data.phone || existingUser.phone || '',
+        fullName: data.fullName || (data.firstName ? `${data.firstName} ${data.lastName}` : (existingUser.fullName || uname)),
+        phone: data.phoneNumber || data.phone || existingUser.phone || '0532 100 20 30',
         role: data.role || existingUser.role || 'USER',
       }));
       window.dispatchEvent(new Event('voltify_user_updated'));
