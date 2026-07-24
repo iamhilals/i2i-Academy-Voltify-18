@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { X, Home, Building2, Briefcase, Plus, MapPin, Maximize, Zap, Sparkles } from 'lucide-react';
 import { homeService } from '../services/homeService';
 
-const AddHomeSlideover = ({ isOpen, onClose }) => {
+const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
   const [homeName, setHomeName] = useState('');
   const [address, setAddress] = useState('');
   const [homeType, setHomeType] = useState('apartment'); // 'house', 'apartment', 'office'
   const [squareMeters, setSquareMeters] = useState('');
+  const [roomLayout, setRoomLayout] = useState('2+1');
   const [hasSmartInfra, setHasSmartInfra] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,7 +37,11 @@ const AddHomeSlideover = ({ isOpen, onClose }) => {
         address: address,
         squareMeters: parseInt(squareMeters) || 100,
         type: homeType,
+        roomLayout: roomLayout,
       });
+      if (typeof onSuccess === 'function') {
+        onSuccess();
+      }
     } catch (err) {
       console.warn('Could not register home to backend:', err);
     } finally {
@@ -47,6 +52,7 @@ const AddHomeSlideover = ({ isOpen, onClose }) => {
       setAddress('');
       setHomeType('apartment');
       setSquareMeters('');
+      setRoomLayout('2+1');
       setHasSmartInfra(false);
     }
   };
@@ -159,6 +165,22 @@ const AddHomeSlideover = ({ isOpen, onClose }) => {
                   className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-medium text-gray-900"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                  <Home className="w-4 h-4 text-gray-400" /> Oda Düzeni
+                </label>
+                <select
+                  value={roomLayout}
+                  onChange={(e) => setRoomLayout(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-bold text-gray-700"
+                  required
+                >
+                  <option value="1+0">1+0 (Stüdyo)</option>
+                  <option value="1+1">1+1</option>
+                  <option value="2+1">2+1</option>
+                  <option value="3+1">3+1</option>
+                </select>
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">

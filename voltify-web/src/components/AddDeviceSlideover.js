@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Zap, Cpu, Save, Search } from 'lucide-react';
+import { homeService } from '../services/homeService';
 
-const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice }) => {
+const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Autocomplete states
@@ -11,6 +12,30 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice }) => {
   const [safeLimit, setSafeLimit] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Dynamic rooms selection based on home layout
+  const getRoomsForLayout = (layout) => {
+    switch (layout) {
+      case '1+0':
+        return ['Studio Alanı'];
+      case '1+1':
+        return ['Salon', 'Yatak Odası'];
+      case '2+1':
+        return ['Salon', 'Ana Yatak Odası', 'Çocuk Odası'];
+      case '3+1':
+        return ['Geniş Salon', 'Yatak Odası 1', 'Yatak Odası 2', 'Çocuk Odası'];
+      default:
+        return ['Salon', 'Yatak Odası'];
+    }
+  };
+  const availableRooms = useMemo(() => getRoomsForLayout(roomLayout), [roomLayout]);
+  const [selectedRoom, setSelectedRoom] = useState(availableRooms[0] || 'Salon');
+
+  useEffect(() => {
+    if (availableRooms.length > 0) {
+      setSelectedRoom(availableRooms[0]);
+    }
+  }, [roomLayout, availableRooms]);
 
   // Pre-defined fixed list. We use state so we can add to it if the user types something new.
   const [deviceList, setDeviceList] = useState([
@@ -73,18 +98,11 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      // If the user typed a completely new device name, add it to our list for next time
-      if (deviceName.trim() !== '' && !deviceList.some(d => d.toLocaleLowerCase('tr-TR') === deviceName.toLocaleLowerCase('tr-TR'))) {
-        setDeviceList(prev => [...prev, deviceName.trim()].sort());
-      }
-
-      // Map select values to display category types
+    try {
       const categoryMap = {
         'sogutucu': 'Soğutucu',
         'iklimlendirme': 'İklimlendirme',
@@ -99,27 +117,63 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice }) => {
         'elektrikli_arac': 'Elektronik'
       };
 
-      const newDevice = {
-        id: Date.now(),
+      const payload = {
         name: deviceName.trim(),
-        type: categoryMap[category] || 'Elektronik',
-        currentWattage: Math.floor(Math.random() * (parseInt(safeLimit) * 0.6 || 200)) + 10,
-        maxSafeWattage: parseInt(safeLimit) || 1000,
-        isAnomalous: false,
-        image: category === 'sogutucu' ? '/fridge/fridge_mock.png' : '/washer/washer_mock.png'
+        safePowerLimit: parseFloat(safeLimit) || 1000.0,
+        room: selectedRoom,
+        type: categoryMap[category] || 'Elektronik'
       };
 
-      if (onAddDevice) {
-        onAddDevice(newDevice);
+      let registeredAppliance = null;
+      if (homeId) {
+        // Real API call
+        const updatedHome = await homeService.addAppliance(homeId, payload);
+        if (updatedHome && Array.isArray(updatedHome.appliances)) {
+          // Find the last matching appliance in the list as the registered one
+          registeredAppliance = updatedHome.appliances.find(
+            app => app.name === payload.name && app.room === payload.room
+          ) || updatedHome.appliances[updatedHome.appliances.length - 1];
+        }
       }
 
-      setIsSubmitting(false);
+      // Local fallback if no homeId or API fails
+      if (!registeredAppliance) {
+        registeredAppliance = {
+          id: Date.now(),
+          name: payload.name,
+          type: payload.type,
+          room: payload.room,
+          currentWattage: Math.floor(Math.random() * (parseInt(safeLimit) * 0.6 || 200)) + 10,
+          maxSafeWattage: parseInt(safeLimit) || 1000,
+          isAnomalous: false,
+          image: category === 'sogutucu' ? '/fridge/fridge_mock.png' : '/washer/washer_mock.png'
+        };
+      }
+
+      // Save room mapping in localStorage as backup
+      if (registeredAppliance && registeredAppliance.id) {
+        localStorage.setItem(`voltify_device_room_${registeredAppliance.id}`, selectedRoom);
+      }
+
+      if (onAddDevice) {
+        onAddDevice(registeredAppliance);
+      }
+
+      // If the user typed a completely new device name, add it to our list for next time
+      if (deviceName.trim() !== '' && !deviceList.some(d => d.toLocaleLowerCase('tr-TR') === deviceName.toLocaleLowerCase('tr-TR'))) {
+        setDeviceList(prev => [...prev, deviceName.trim()].sort());
+      }
+
       setDeviceName(''); // reset for next time
       setCategory('');
       setBrand('');
       setSafeLimit('');
       onClose();
-    }, 1000);
+    } catch (err) {
+      console.warn('Could not register appliance to backend:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Helper function to simulate AI database for safe limits
@@ -243,6 +297,20 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice }) => {
                 <option value="guvenlik">Güvenlik & Sensörler</option>
                 <option value="bahce">Bahçe & Dış Mekan</option>
                 <option value="elektrikli_arac">Elektrikli Araç Şarj İstasyonu (EV)</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-gray-700">Bulunduğu Oda</label>
+              <select 
+                value={selectedRoom}
+                onChange={(e) => setSelectedRoom(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-[#4C811F] focus:bg-white outline-none transition-all font-bold text-gray-700 cursor-pointer" 
+                required
+              >
+                {availableRooms.map((room, idx) => (
+                  <option key={idx} value={room}>{room}</option>
+                ))}
               </select>
             </div>
 

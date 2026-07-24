@@ -59,6 +59,12 @@ public class Home {
     @OneToOne(mappedBy = "home", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private BillingLedger billingLedger;
 
+    @Column(nullable = true)
+    private Integer squareMeters;
+
+    @Column(nullable = true)
+    private String roomLayout;
+
     // Getter ve Setter metotları
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -89,4 +95,10 @@ public class Home {
 
     public BillingLedger getBillingLedger() { return billingLedger; }
     public void setBillingLedger(BillingLedger billingLedger) { this.billingLedger = billingLedger; }
+
+    public Integer getSquareMeters() { return squareMeters; }
+    public void setSquareMeters(Integer squareMeters) { this.squareMeters = squareMeters; }
+
+    public String getRoomLayout() { return roomLayout; }
+    public void setRoomLayout(String roomLayout) { this.roomLayout = roomLayout; }
 }

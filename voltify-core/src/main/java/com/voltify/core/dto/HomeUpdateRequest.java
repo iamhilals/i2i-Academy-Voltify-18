@@ -9,6 +9,8 @@ public class HomeUpdateRequest {
     private Double budgetQuotaTry;
     private Double baseRate;
     private Double penaltyRate;
+    private Integer squareMeters;
+    private String roomLayout;
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -27,4 +29,10 @@ public class HomeUpdateRequest {
 
     public Double getPenaltyRate() { return penaltyRate; }
     public void setPenaltyRate(Double penaltyRate) { this.penaltyRate = penaltyRate; }
+
+    public Integer getSquareMeters() { return squareMeters; }
+    public void setSquareMeters(Integer squareMeters) { this.squareMeters = squareMeters; }
+
+    public String getRoomLayout() { return roomLayout; }
+    public void setRoomLayout(String roomLayout) { this.roomLayout = roomLayout; }
 }

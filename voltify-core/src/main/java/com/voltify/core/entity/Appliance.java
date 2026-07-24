@@ -31,6 +31,9 @@ public class Appliance {
     @JsonBackReference // Çocuk (Bağlı) taraf burası, döngüyü bu durduracak
     private Home home;
 
+    private String room;
+    private String type;
+
     // Getter ve Setter metotları
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -43,4 +46,10 @@ public class Appliance {
 
     public Home getHome() { return home; }
     public void setHome(Home home) { this.home = home; }
+
+    public String getRoom() { return room; }
+    public void setRoom(String room) { this.room = room; }
+
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
 }

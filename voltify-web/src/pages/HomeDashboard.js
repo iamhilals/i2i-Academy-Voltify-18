@@ -54,34 +54,50 @@ const HomeDashboard = () => {
   const [isAddHomeOpen, setIsAddHomeOpen] = useState(false);
   const [homes, setHomes] = useState(mockHomes);
 
-  useEffect(() => {
-    async function loadHomes() {
-      try {
-        const backendHomes = await homeService.getMyHomes();
-        if (Array.isArray(backendHomes) && backendHomes.length > 0) {
-          const formatted = backendHomes.map((h, idx) => ({
-            id: h.id,
-            name: h.name || `Ev ${h.id}`,
-            consumption: `${h.currentConsumptionKw || (h.appliances ? h.appliances.length * 0.5 : 1.2)} kW`,
-            status: h.status || 'Aktif',
-            health: 'MÜKEMMEL',
-            healthScore: 5,
-            image: mockHomes[idx % mockHomes.length].image,
-            isCritical: false,
-          }));
+  const loadHomes = async () => {
+    try {
+      const backendHomes = await homeService.getMyHomes();
+      if (Array.isArray(backendHomes)) {
+        if (backendHomes.length > 0) {
+          const formatted = backendHomes.map((h, idx) => {
+            const hasBreached = h.billingLedger 
+              ? (h.billingLedger.isPenaltyActive || h.billingLedger.accumulatedWatt >= h.powerQuotaWatt || h.billingLedger.currentBalance >= h.budgetQuotaTry)
+              : false;
+            
+            return {
+              id: h.id,
+              name: h.name || `Ev ${h.id}`,
+              consumption: h.billingLedger 
+                ? `${Math.round((h.billingLedger.accumulatedWatt / 1000) * 10) / 10} kW`
+                : `${h.appliances ? h.appliances.length * 0.5 : 1.2} kW`,
+              status: h.billingLedger && h.billingLedger.isPenaltyActive ? 'Cezai Durum' : 'Aktif',
+              health: hasBreached ? 'KRİTİK' : 'MÜKEMMEL',
+              healthScore: hasBreached ? 1 : 5,
+              image: mockHomes[idx % mockHomes.length].image,
+              isCritical: hasBreached,
+              warning: hasBreached ? 'Bütçe veya güç kotası aşıldı!' : null,
+              squareMeters: h.squareMeters || 120,
+              roomLayout: h.roomLayout || '2+1',
+            };
+          });
           setHomes(formatted);
+        } else {
+          setHomes([]);
         }
-      } catch (err) {
-        console.warn('Backend server unreachable or unauthenticated, using mock homes data:', err);
       }
+    } catch (err) {
+      console.warn('Backend server unreachable or unauthenticated, using mock homes data:', err);
     }
+  };
+
+  useEffect(() => {
     loadHomes();
   }, []);
 
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-      <AddHomeSlideover isOpen={isAddHomeOpen} onClose={() => setIsAddHomeOpen(false)} />
+      <AddHomeSlideover isOpen={isAddHomeOpen} onClose={() => setIsAddHomeOpen(false)} onSuccess={loadHomes} />
       
       {/* Header */}
       <div className="flex justify-between items-end">
@@ -170,7 +186,10 @@ const HomeDashboard = () => {
 
             {/* Info */}
             <div className="px-2">
-              <h3 className={`text-xl font-bold mb-4 ${home.isCritical ? 'text-red-500' : 'text-gray-900 dark:text-gray-100'}`}>{home.name}</h3>
+              <h3 className={`text-xl font-black mb-1 ${home.isCritical ? 'text-red-500' : 'text-gray-900 dark:text-gray-100'}`}>{home.name}</h3>
+              <p className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-wider mb-4">
+                {home.roomLayout} • {home.squareMeters} m²
+              </p>
               
               <div className="flex justify-between items-end mb-6">
                 <span className="text-xs font-bold text-gray-400 dark:text-gray-500">Tüketim</span>

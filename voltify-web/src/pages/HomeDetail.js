@@ -63,13 +63,20 @@ const HomeDetail = () => {
         const statusData = await homeService.getHomeStatus(id);
         if (statusData) {
           setHomeState({
-            id: statusData.homeId || parseInt(id),
-            name: statusData.homeName || `Ev ${id}`,
-            consumption: `${statusData.totalConsumptionKw || 1.2} kW`,
-            status: statusData.status || 'Optimal',
-            isCritical: statusData.status === 'KRİTİK',
+            id: statusData.id || parseInt(id),
+            name: statusData.name || `Ev ${id}`,
+            consumption: statusData.accumulatedWatt 
+              ? `${Math.round((statusData.accumulatedWatt / 1000) * 10) / 10} kW`
+              : '1.2 kW',
+            status: statusData.isPenaltyActive ? 'Cezai Durum' : 'Optimal',
+            isCritical: statusData.isPenaltyActive || false,
             image: mockHomeData.image,
+            squareMeters: statusData.squareMeters || 120,
+            roomLayout: statusData.roomLayout || '2+1',
           });
+          if (Array.isArray(statusData.appliances)) {
+            setAppliances(statusData.appliances);
+          }
         }
       } catch (err) {
         console.warn('Could not fetch home status from backend, using fallback:', err);
@@ -81,7 +88,14 @@ const HomeDetail = () => {
   }, [id]);
 
   const isCritical = id === '2';
-  const home = homeState || { ...mockHomeData, id: parseInt(id) || 1, isCritical, name: isCritical ? 'Crimson Lodge' : 'Villa i2i' };
+  const home = homeState || { 
+    ...mockHomeData, 
+    id: parseInt(id) || 1, 
+    isCritical, 
+    name: isCritical ? 'Crimson Lodge' : 'Villa i2i',
+    squareMeters: isCritical ? 100 : 120,
+    roomLayout: isCritical ? '1+1' : '2+1'
+  };
 
   return (
     <div className="w-full flex flex-col animate-in fade-in zoom-in-95 duration-300">
@@ -100,7 +114,7 @@ const HomeDetail = () => {
         </button>
 
         <button 
-          onClick={() => navigate('/dashboard/meta-home', { state: { homeName: home.name, devices: appliances } })}
+          onClick={() => navigate('/dashboard/meta-home', { state: { homeName: home.name, devices: appliances, squareMeters: home.squareMeters, roomLayout: home.roomLayout } })}
           className="absolute top-6 right-6 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 backdrop-blur-md rounded-xl flex items-center gap-2 text-white font-bold transition-colors shadow-xl shadow-purple-900/40 border border-white/10"
         >
           <Zap className="w-5 h-5" />
@@ -114,6 +128,9 @@ const HomeDetail = () => {
               {home.status.toUpperCase()}
             </span>
             <h2 className="text-4xl font-black text-white tracking-tight">{home.name}</h2>
+            <p className="text-gray-300 text-sm font-bold mt-1 uppercase tracking-wider">
+              {home.roomLayout || '2+1'} Oda Düzeni • {home.squareMeters || 120} m² Büyüklük
+            </p>
           </div>
           
           <div className="text-right">
@@ -184,7 +201,12 @@ const HomeDetail = () => {
                       <div className="flex justify-between items-start">
                         <div>
                           <h4 className="font-bold text-gray-900 text-sm">{app.name}</h4>
-                          <span className="text-xs font-medium text-gray-500">{app.type}</span>
+                          <div className="flex gap-2 items-center mt-0.5">
+                            <span className="text-[10px] font-black uppercase text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">{app.type}</span>
+                            <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                              {app.room || localStorage.getItem(`voltify_device_room_${app.id}`) || 'Salon'}
+                            </span>
+                          </div>
                         </div>
                         {app.isAnomalous && (
                           <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
@@ -335,6 +357,8 @@ const HomeDetail = () => {
         onAddDevice={(newDevice) => {
           setAppliances(prev => [...prev, newDevice]);
         }}
+        homeId={id}
+        roomLayout={home.roomLayout}
       />
     </div>
   );

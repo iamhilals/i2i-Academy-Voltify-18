@@ -649,8 +649,208 @@ const FloorLamp = ({ position }) => (
   </group>
 );
 
+// 3D Partition Walls Component depending on roomLayout and floorSize
+const PartitionWalls = ({ layout, size }) => {
+  const half = size / 2;
+  const height = 2.5;
+  const thickness = 0.25;
+
+  const wallMat = (
+    <meshStandardMaterial color="#334155" roughness={0.6} metalness={0.1} />
+  );
+
+  // 1+1 layout walls
+  const render1plus1 = () => (
+    <group>
+      {/* Middle dividing wall along Z axis at X = 0 (leaving a door gap in center) */}
+      <mesh position={[0, height / 2, -(half + 2) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 2]} />
+        {wallMat}
+      </mesh>
+      <mesh position={[0, height / 2, (half + 2) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 2]} />
+        {wallMat}
+      </mesh>
+      {/* Header over the doorway */}
+      <mesh position={[0, height - 0.25, 0]} castShadow>
+        <boxGeometry args={[thickness, 0.5, 4]} />
+        {wallMat}
+      </mesh>
+    </group>
+  );
+
+  // 2+1 layout walls
+  const render2plus1 = () => (
+    <group>
+      {/* Main dividing wall separating Living Room (X < 0) from Bedrooms (X > 0) */}
+      {/* Divider wall on Z-axis with door gaps at Z=-3 and Z=3 */}
+      <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, 4]} />
+        {wallMat}
+      </mesh>
+      <mesh position={[0, height / 2, -(half + 5) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 5]} />
+        {wallMat}
+      </mesh>
+      <mesh position={[0, height / 2, (half + 5) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 5]} />
+        {wallMat}
+      </mesh>
+      {/* Headers over the doorways */}
+      <mesh position={[0, height - 0.25, -4]} castShadow>
+        <boxGeometry args={[thickness, 0.5, 2]} />
+        {wallMat}
+      </mesh>
+      <mesh position={[0, height - 0.25, 4]} castShadow>
+        <boxGeometry args={[thickness, 0.5, 2]} />
+        {wallMat}
+      </mesh>
+
+      {/* Bedroom divider wall (along X-axis at Z = 0, for X > 0) */}
+      <mesh position={[(half + 2) / 2, height / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[half - 2, height, thickness]} />
+        {wallMat}
+      </mesh>
+      {/* Header over bedroom door */}
+      <mesh position={[1, height - 0.25, 0]} castShadow>
+        <boxGeometry args={[2, 0.5, thickness]} />
+        {wallMat}
+      </mesh>
+    </group>
+  );
+
+  // 3+1 layout walls
+  const render3plus1 = () => (
+    <group>
+      {/* Living room divider at X = -half / 3 */}
+      <mesh position={[-half / 3, height / 2, -(half + 2) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 2]} />
+        {wallMat}
+      </mesh>
+      <mesh position={[-half / 3, height / 2, (half + 2) / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 2]} />
+        {wallMat}
+      </mesh>
+      <mesh position={[-half / 3, height - 0.25, 0]} castShadow>
+        <boxGeometry args={[thickness, 0.5, 4]} />
+        {wallMat}
+      </mesh>
+
+      {/* Corridor walls on right side */}
+      <mesh position={[half / 3, height / 2, -half / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 1]} />
+        {wallMat}
+      </mesh>
+      <mesh position={[half / 3, height / 2, half / 2]} castShadow receiveShadow>
+        <boxGeometry args={[thickness, height, half - 1]} />
+        {wallMat}
+      </mesh>
+
+      {/* Horizontal dividers for the 3 bedrooms on the right side (X > half/3) */}
+      {/* Divider 1 at Z = -half / 3 */}
+      <mesh position={[half * 2/3, height / 2, -half / 3]} castShadow receiveShadow>
+        <boxGeometry args={[half * 2/3, height, thickness]} />
+        {wallMat}
+      </mesh>
+      {/* Divider 2 at Z = half / 3 */}
+      <mesh position={[half * 2/3, height / 2, half / 3]} castShadow receiveShadow>
+        <boxGeometry args={[half * 2/3, height, thickness]} />
+        {wallMat}
+      </mesh>
+    </group>
+  );
+
+  if (layout === '1+1') return render1plus1();
+  if (layout === '2+1') return render2plus1();
+  if (layout === '3+1') return render3plus1();
+  return null; // 1+0 (Studio) - fully open space
+};
+
+// Room Labels Component
+const RoomLabels = ({ layout, size }) => {
+  const half = size / 2;
+  
+  if (layout === '1+0') {
+    return (
+      <Html position={[0, 1.8, 0]} center distanceFactor={12}>
+        <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+          Studio Yaşam Alanı
+        </div>
+      </Html>
+    );
+  }
+
+  if (layout === '1+1') {
+    return (
+      <group>
+        <Html position={[-half / 2, 1.8, 0]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            Salon & Mutfak
+          </div>
+        </Html>
+        <Html position={[half / 2, 1.8, 0]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            Yatak Odası
+          </div>
+        </Html>
+      </group>
+    );
+  }
+
+  if (layout === '2+1') {
+    return (
+      <group>
+        <Html position={[-half / 2, 1.8, 0]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            Salon & Mutfak
+          </div>
+        </Html>
+        <Html position={[half / 2, 1.8, -half / 2]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            Ana Yatak Odası
+          </div>
+        </Html>
+        <Html position={[half / 2, 1.8, half / 2]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            Çocuk Odası
+          </div>
+        </Html>
+      </group>
+    );
+  }
+
+  if (layout === '3+1') {
+    return (
+      <group>
+        <Html position={[-half * 2/3, 1.8, 0]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            Geniş Salon
+          </div>
+        </Html>
+        <Html position={[half * 2/3, 1.8, -half * 2/3]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            Yatak Odası 1
+          </div>
+        </Html>
+        <Html position={[half * 2/3, 1.8, 0]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            Yatak Odası 2
+          </div>
+        </Html>
+        <Html position={[half * 2/3, 1.8, half * 2/3]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            Çocuk Odası
+          </div>
+        </Html>
+      </group>
+    );
+  }
+
+  return null;
+};
+
 // Advanced Multi-Character Player Component (Robot, Man, Woman, Child)
-const Player = ({ playerRef, characterType = 'robot' }) => {
+const Player = ({ playerRef, characterType = 'robot', initialPosition = [0, 0.5, 0] }) => {
   const [, get] = useKeyboardControls();
   const speed = 5.5;
 
@@ -1051,7 +1251,7 @@ const Player = ({ playerRef, characterType = 'robot' }) => {
   );
 
   return (
-    <group ref={playerRef} position={[0, 0.5, 0]}>
+    <group ref={playerRef} position={initialPosition}>
       {characterType === 'robot' && renderRobot()}
       {characterType === 'man' && renderMan()}
       {characterType === 'woman' && renderWoman()}
@@ -1071,6 +1271,31 @@ const MetaHome = () => {
   const state = location.state || {};
   const homeName = state.homeName || "Meta-House 3D";
   const devices = state.devices || EMPTY_ARRAY;
+  const squareMeters = state.squareMeters || 120;
+  const roomLayout = state.roomLayout || "2+1";
+
+  // Metrekareye göre zemin boyutunu belirleme
+  const getFloorSize = (sqm) => {
+    if (sqm <= 80) return 14;
+    if (sqm <= 120) return 18;
+    if (sqm <= 160) return 22;
+    return 26;
+  };
+  const floorSize = getFloorSize(squareMeters);
+  const halfSize = floorSize / 2;
+
+  // Calculate living room center X coordinate to prevent furniture overlapping with dividing walls
+  const getSalonCenterX = (layout, size) => {
+    const half = size / 2;
+    if (layout === '1+1' || layout === '2+1') {
+      return -half / 2;
+    }
+    if (layout === '3+1') {
+      return -half * 2/3;
+    }
+    return 0; // 1+0 (Studio)
+  };
+  const salonX = getSalonCenterX(roomLayout, floorSize);
 
   // Colors mapping for devices based on type
   const getDeviceColor = (type) => {
@@ -1083,17 +1308,131 @@ const MetaHome = () => {
     }
   };
 
-  // Pre-calculated positions for devices to spread them around the room (8 possible corners/sides)
-  const devicePositions = [
-    [-6, 0, -6], // Sol arka
-    [6, 0, -6],  // Sağ arka
-    [-6, 0, 6],  // Sol ön
-    [6, 0, 6],   // Sağ ön
-    [-7.5, 0, 0],  // Sol orta
-    [7.5, 0, 0],   // Sağ orta
-    [-3.5, 0, -6.5], // Arka sol-orta
-    [3.5, 0, -6.5]   // Arka sağ-orta
-  ];
+  // Calculate dynamic device positions based on room layout, floor size, and room assignment
+  const getDevicePosition = (device, layout, size, index) => {
+    const half = size / 2;
+    const offset = 2;
+
+    // Check device type or name to see if we can infer a room if not specified
+    let room = device.room || localStorage.getItem(`voltify_device_room_${device.id}`);
+    if (!room) {
+      // Fallback inference based on device name or category
+      const name = (device.name || '').toLowerCase();
+      if (name.includes('klima') || name.includes('tv') || name.includes('televizyon') || name.includes('koltuk') || name.includes('ampul')) {
+        room = layout === '3+1' ? 'Geniş Salon' : 'Salon';
+      } else if (name.includes('yatak') || name.includes('bilgisayar') || name.includes('laptop')) {
+        room = layout === '3+1' ? 'Yatak Odası 1' : 'Yatak Odası';
+      } else if (name.includes('çocuk') || name.includes('oyun') || name.includes('konsol')) {
+        room = 'Çocuk Odası';
+      } else {
+        room = layout === '3+1' ? 'Geniş Salon' : 'Salon'; // fallback to salon
+      }
+    }
+
+    const rName = room.toLowerCase();
+
+    // Layout: 1+0 (Studio)
+    if (layout === '1+0') {
+      const positions = [
+        [-(half - offset), 0.5, -(half - offset)],
+        [(half - offset), 0.5, -(half - offset)],
+        [-(half - offset), 0.5, (half - offset)],
+        [(half - offset), 0.5, (half - offset)],
+        [-(half - offset), 0.5, 0],
+        [(half - offset), 0.5, 0]
+      ];
+      return positions[index % positions.length];
+    }
+
+    // Layout: 1+1
+    if (layout === '1+1') {
+      if (rName.includes('yatak')) {
+        // Yatak Odası (X > 0)
+        const positions = [
+          [(half - offset), 0.5, -(half - offset)],
+          [2, 0.5, -(half - offset)],
+          [(half - offset), 0.5, (half - offset)],
+          [2, 0.5, (half - offset)]
+        ];
+        return positions[index % positions.length];
+      } else {
+        // Salon (X < 0)
+        const positions = [
+          [-(half - offset), 0.5, -(half - offset)],
+          [-2, 0.5, -(half - offset)],
+          [-(half - offset), 0.5, (half - offset)],
+          [-2, 0.5, (half - offset)]
+        ];
+        return positions[index % positions.length];
+      }
+    }
+
+    // Layout: 2+1
+    if (layout === '2+1') {
+      if (rName.includes('ana yatak') || rName.includes('yatak odası')) {
+        // Ana Yatak Odası (X > 0, Z < 0)
+        const positions = [
+          [(half - offset), 0.5, -(half - offset)],
+          [2, 0.5, -(half - offset)],
+          [(half - offset), 0.5, -2]
+        ];
+        return positions[index % positions.length];
+      } else if (rName.includes('çocuk')) {
+        // Çocuk Odası (X > 0, Z > 0)
+        const positions = [
+          [(half - offset), 0.5, (half - offset)],
+          [2, 0.5, (half - offset)],
+          [(half - offset), 0.5, 2]
+        ];
+        return positions[index % positions.length];
+      } else {
+        // Salon (X < 0)
+        const positions = [
+          [-(half - offset), 0.5, -(half - offset)],
+          [-2, 0.5, -(half - offset)],
+          [-(half - offset), 0.5, (half - offset)],
+          [-2, 0.5, (half - offset)]
+        ];
+        return positions[index % positions.length];
+      }
+    }
+
+    // Layout: 3+1
+    if (layout === '3+1') {
+      if (rName.includes('yatak odası 1')) {
+        // Room 1 (X > half/3, Z < -half/3)
+        const positions = [
+          [(half - offset), 0.5, -(half - offset)],
+          [(half - offset - 2), 0.5, -(half - offset)]
+        ];
+        return positions[index % positions.length];
+      } else if (rName.includes('yatak odası 2')) {
+        // Room 2 (X > half/3, -half/3 < Z < half/3)
+        const positions = [
+          [(half - offset), 0.5, 0],
+          [(half - offset - 2), 0.5, 0]
+        ];
+        return positions[index % positions.length];
+      } else if (rName.includes('çocuk')) {
+        // Room 3 (X > half/3, Z > half/3)
+        const positions = [
+          [(half - offset), 0.5, (half - offset)],
+          [(half - offset - 2), 0.5, (half - offset)]
+        ];
+        return positions[index % positions.length];
+      } else {
+        // Geniş Salon (X < -half/3)
+        const positions = [
+          [-(half - offset), 0.5, -(half - offset)],
+          [-(half - offset - 2), 0.5, -(half - offset)],
+          [-(half - offset), 0.5, (half - offset)]
+        ];
+        return positions[index % positions.length];
+      }
+    }
+
+    return [0, 0.5, 0];
+  };
 
   const [devicePositionsMap, setDevicePositionsMap] = useState({});
   const [selectedTransformId, setSelectedTransformId] = useState(null);
@@ -1106,12 +1445,12 @@ const MetaHome = () => {
       const updated = { ...prev };
       devices.forEach((device, index) => {
         if (updated[device.id] === undefined) {
-          updated[device.id] = index % devicePositions.length;
+          updated[device.id] = getDevicePosition(device, roomLayout, floorSize, index);
         }
       });
       return updated;
     });
-  }, [devices, devicePositions.length]);
+  }, [devices, roomLayout, floorSize]);
 
   // Keyboard mapping
   const keyboardMap = [
@@ -1134,8 +1473,8 @@ const MetaHome = () => {
         </button>
         <div>
           <h1 className="text-2xl font-black text-white drop-shadow-md">{homeName} - 3D Mod</h1>
-          <p className="text-white/80 text-xs font-medium bg-black/20 px-3 py-1 rounded-full inline-block mt-1">
-            Yön tuşları veya W,A,S,D ile hareket edin
+          <p className="text-white/80 text-xs font-bold bg-black/35 px-3 py-1 rounded-full inline-block mt-1">
+            {roomLayout} • {squareMeters} m² • Yön tuşları veya W,A,S,D ile hareket edin
           </p>
         </div>
       </div>
@@ -1184,55 +1523,61 @@ const MetaHome = () => {
           
           {/* Custom Floor (Chic dark slate parquet style) */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[50, 50]} />
+            <planeGeometry args={[floorSize + 30, floorSize + 30]} />
             <meshStandardMaterial color="#1E293B" roughness={0.85} metalness={0.1} />
-            <gridHelper args={[50, 50, '#334155', '#334155']} rotation={[Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} />
+            <gridHelper args={[floorSize + 30, floorSize + 30, '#334155', '#334155']} rotation={[Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} />
           </mesh>
 
           {/* Cozy Room Carpet under sofa and coffee table */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, -0.5]} receiveShadow>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[salonX, 0.02, -0.5]} receiveShadow>
             <planeGeometry args={[5.2, 6.2]} />
             <meshStandardMaterial color="#2E4C3E" roughness={0.95} />
           </mesh>
 
           {/* Room Walls (Premium charcoal wood panel style) */}
           {/* Back Wall */}
-          <mesh position={[0, 2.5, -10]} receiveShadow castShadow>
-            <boxGeometry args={[20, 5, 0.4]} />
+          <mesh position={[0, 2.5, -halfSize]} receiveShadow castShadow>
+            <boxGeometry args={[floorSize, 5, 0.4]} />
             <meshStandardMaterial color="#0F172A" roughness={0.7} />
           </mesh>
           {/* Left Wall */}
-          <mesh position={[-10, 2.5, 0]} receiveShadow castShadow>
-            <boxGeometry args={[0.4, 5, 20]} />
+          <mesh position={[-halfSize, 2.5, 0]} receiveShadow castShadow>
+            <boxGeometry args={[0.4, 5, floorSize]} />
             <meshStandardMaterial color="#0F172A" roughness={0.7} />
           </mesh>
           {/* Right Wall */}
-          <mesh position={[10, 2.5, 0]} receiveShadow castShadow>
-            <boxGeometry args={[0.4, 5, 20]} />
+          <mesh position={[halfSize, 2.5, 0]} receiveShadow castShadow>
+            <boxGeometry args={[0.4, 5, floorSize]} />
             <meshStandardMaterial color="#0F172A" roughness={0.7} />
           </mesh>
 
+          {/* 3D Dynamic Partition Walls based on roomLayout */}
+          <PartitionWalls layout={roomLayout} size={floorSize} />
+
+          {/* Room Labels */}
+          <RoomLabels layout={roomLayout} size={floorSize} />
+
           {/* Voltify Smart Energy Neon Lighting Tubes along the wall tops */}
-          <mesh position={[0, 4.8, -9.7]} castShadow>
-            <boxGeometry args={[19.8, 0.06, 0.06]} />
+          <mesh position={[0, 4.8, -halfSize + 0.2]} castShadow>
+            <boxGeometry args={[floorSize - 0.2, 0.06, 0.06]} />
             <meshStandardMaterial color="#10B981" emissive="#10B981" emissiveIntensity={3} />
           </mesh>
-          <mesh position={[-9.7, 4.8, 0]} castShadow>
-            <boxGeometry args={[0.06, 0.06, 19.8]} />
+          <mesh position={[-halfSize + 0.2, 4.8, 0]} castShadow>
+            <boxGeometry args={[0.06, 0.06, floorSize - 0.2]} />
             <meshStandardMaterial color="#06B6D4" emissive="#06B6D4" emissiveIntensity={3} />
           </mesh>
-          <mesh position={[9.7, 4.8, 0]} castShadow>
-            <boxGeometry args={[0.06, 0.06, 19.8]} />
+          <mesh position={[halfSize - 0.2, 4.8, 0]} castShadow>
+            <boxGeometry args={[0.06, 0.06, floorSize - 0.2]} />
             <meshStandardMaterial color="#06B6D4" emissive="#06B6D4" emissiveIntensity={3} />
           </mesh>
 
           {/* Furniture Elements */}
-          <CozyCouch position={[0, 0, 1.8]} rotation={[0, Math.PI, 0]} />
-          <TVConsole position={[0, 0, -9.2]} />
-          <FloorLamp position={[2.0, 0, 1.6]} />
+          <CozyCouch position={[salonX, 0, 1.8]} rotation={[0, Math.PI, 0]} />
+          <TVConsole position={[salonX, 0, -halfSize + 0.8]} />
+          <FloorLamp position={[salonX + 2.0, 0, 1.6]} />
           
           {/* Wooden Coffee Table */}
-          <group position={[0, 0, -1.2]}>
+          <group position={[salonX, 0, -1.2]}>
             <mesh position={[0, 0.3, 0]} castShadow receiveShadow>
               <boxGeometry args={[1.8, 0.08, 1.1]} />
               <meshStandardMaterial color="#5C4033" roughness={0.9} />
@@ -1256,20 +1601,17 @@ const MetaHome = () => {
             </mesh>
           </group>
 
-          {/* Potted Plants for Nature Vibes */}
-          <PottedPlant position={[-8.5, 0, -8.5]} />
-          <PottedPlant position={[8.5, 0, -8.5]} />
-          <PottedPlant position={[-8.5, 0, 8.5]} />
+          {/* Potted Plants for Nature Vibes (Dynamically set to room corners) */}
+          <PottedPlant position={[-halfSize + 1.5, 0, -halfSize + 1.5]} />
+          <PottedPlant position={[halfSize - 1.5, 0, -halfSize + 1.5]} />
+          <PottedPlant position={[-halfSize + 1.5, 0, halfSize - 1.5]} />
 
           {/* Player */}
-          <Player playerRef={playerRef} characterType={characterType} />
+          <Player playerRef={playerRef} characterType={characterType} initialPosition={[salonX, 0.5, 0]} />
 
           {/* Dynamic Devices based on specific Home data */}
           {devices.map((device, index) => {
-            const posIndex = devicePositionsMap[device.id] !== undefined 
-              ? devicePositionsMap[device.id] 
-              : index % devicePositions.length;
-            const pos = devicePositions[posIndex];
+            const pos = devicePositionsMap[device.id] || getDevicePosition(device, roomLayout, floorSize, index);
             
             return (
               <InteractiveDevice 

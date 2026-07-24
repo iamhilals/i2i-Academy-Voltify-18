@@ -52,6 +52,29 @@ public class HomeService {
         User currentUser = getCurrentUser();
         home.setOwner(currentUser);
 
+        // Zorunlu alanlar için varsayılan değerleri ata (null ise)
+        if (home.getContactEmail() == null) {
+            home.setContactEmail(currentUser.getEmail() != null ? currentUser.getEmail() : "demo@voltify.com");
+        }
+        if (home.getPowerQuotaWatt() == null) {
+            home.setPowerQuotaWatt(3500.0);
+        }
+        if (home.getBudgetQuotaTry() == null) {
+            home.setBudgetQuotaTry(1500.0);
+        }
+        if (home.getBaseRate() == null) {
+            home.setBaseRate(2.4);
+        }
+        if (home.getPenaltyRate() == null) {
+            home.setPenaltyRate(4.8);
+        }
+        if (home.getSquareMeters() == null) {
+            home.setSquareMeters(120);
+        }
+        if (home.getRoomLayout() == null) {
+            home.setRoomLayout("2+1");
+        }
+
         // Cihazların hangi eve ait olduğunu belirt (çift yönlü ilişki)
         if (home.getAppliances() != null) {
             home.getAppliances().forEach(appliance -> appliance.setHome(home));
@@ -101,6 +124,8 @@ public class HomeService {
         response.setBaseRate(home.getBaseRate());
         response.setPenaltyRate(home.getPenaltyRate());
         response.setAppliances(home.getAppliances());
+        response.setSquareMeters(home.getSquareMeters());
+        response.setRoomLayout(home.getRoomLayout());
 
         // Anlık/canlı bilgileri Ignite'tan (sub-millisecond okuma) doldur
         HomeLiveState liveState = igniteService.getOrCreateHomeState(homeId);
@@ -139,6 +164,8 @@ public class HomeService {
         if (request.getBudgetQuotaTry() != null) home.setBudgetQuotaTry(request.getBudgetQuotaTry());
         if (request.getBaseRate() != null) home.setBaseRate(request.getBaseRate());
         if (request.getPenaltyRate() != null) home.setPenaltyRate(request.getPenaltyRate());
+        if (request.getSquareMeters() != null) home.setSquareMeters(request.getSquareMeters());
+        if (request.getRoomLayout() != null) home.setRoomLayout(request.getRoomLayout());
 
         return homeRepository.save(home);
     }

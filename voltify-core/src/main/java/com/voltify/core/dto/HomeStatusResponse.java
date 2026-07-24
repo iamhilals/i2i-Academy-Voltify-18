@@ -1,7 +1,6 @@
 package com.voltify.core.dto;
 
 import java.util.List;
-
 import com.voltify.core.entity.Appliance;
 
 public class HomeStatusResponse {
@@ -15,6 +14,8 @@ public class HomeStatusResponse {
     private Double baseRate;
     private Double penaltyRate;
     private List<Appliance> appliances;
+    private Integer squareMeters;
+    private String roomLayout;
 
     // Ignite'tan gelen anlık/canlı bilgiler
     private Double accumulatedWatt;
@@ -46,6 +47,12 @@ public class HomeStatusResponse {
 
     public List<Appliance> getAppliances() { return appliances; }
     public void setAppliances(List<Appliance> appliances) { this.appliances = appliances; }
+
+    public Integer getSquareMeters() { return squareMeters; }
+    public void setSquareMeters(Integer squareMeters) { this.squareMeters = squareMeters; }
+
+    public String getRoomLayout() { return roomLayout; }
+    public void setRoomLayout(String roomLayout) { this.roomLayout = roomLayout; }
 
     public Double getAccumulatedWatt() { return accumulatedWatt; }
     public void setAccumulatedWatt(Double accumulatedWatt) { this.accumulatedWatt = accumulatedWatt; }
