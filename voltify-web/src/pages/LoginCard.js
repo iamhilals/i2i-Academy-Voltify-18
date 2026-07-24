@@ -129,13 +129,9 @@ export default function LoginCard({ isDark, onGoRegister }) {
         navigate('/dashboard');
       }, 1000);
     } catch (err) {
-      console.warn('Backend login unavailable or returned error, falling back to demo login:', err);
-      localStorage.setItem('voltify_token', 'demo-jwt-token');
-      localStorage.setItem('voltify_user', JSON.stringify({ username, role: 'USER' }));
-      setTimeout(() => {
-        setIsUnlocking(false);
-        navigate('/dashboard');
-      }, 1000);
+      setIsUnlocking(false);
+      const errMsg = err.response?.data?.message || (typeof err.response?.data === 'string' ? err.response.data : 'Kullanıcı adı/email veya şifre hatalı!');
+      setError(errMsg);
     }
   };
 
