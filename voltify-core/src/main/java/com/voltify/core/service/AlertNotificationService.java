@@ -69,15 +69,23 @@ public class AlertNotificationService {
         double watt = ledger != null ? ledger.getAccumulatedWatt() : 0.0;
         double balance = ledger != null ? ledger.getCurrentBalance() : 0.0;
 
+        String registeredDevicesStr = (home.getAppliances() != null && !home.getAppliances().isEmpty())
+                ? home.getAppliances().stream().map(a -> a.getName()).reduce((a, b) -> a + ", " + b).orElse("Henüz tanımlı cihaz yok")
+                : "Henüz kayıtlı cihaz yok";
+
         return String.format(
-                "Sen bir enerji tasarrufu uzmanısın. Türkçe, kısa ve nazik bir uyarı mesajı yaz. " +
+                "Sen bir enerji tasarrufu uzmanısın. Türkçe, kısa ve son derece nazik bir e-posta uyarısı yaz. " +
                 "Ev bilgileri: '%s' isimli ev, aylık güç kotası %.0f Watt, aylık bütçe kotası %.2f TL. " +
                 "Şu ana kadar %.0f Watt tüketildi ve %.2f TL fatura biriktirdi. " +
-                "%s uyarısı tetiklendi. Kullanıcıya nazikçe bilgi ver ve 3-4 somut tasarruf tavsiyesi sun. " +
-                "En fazla 150 kelime kullan.",
+                "Evde kayıtlı aktif cihazlar şunlardır: [%s]. " +
+                "%s uyarısı tetiklendi. " +
+                "ÖNEMLİ KURAL: Yalnızca yukarıdaki listede kayıtlı olan cihazlar üzerinden tasarruf önerileri sun. " +
+                "Evde bulunmayan veya yukarıdaki listede yer almayan cihazlardan (Örn: Klima, Fırın vs. listede yoksa) ASLA BAHSETME! " +
+                "Kullanıcıya nazikçe bilgi ver ve listedeki cihazlar üzerinden 2-3 pratik tasarruf önerisi sun. " +
+                "En fazla 120 kelime kullan.",
                 home.getName(), home.getPowerQuotaWatt(), home.getBudgetQuotaTry(),
-                watt, balance,
-                breachType.equals("BREACH_80") ? "%80 kota" : "%100 kota (ceza tarifesi aktif)"
+                watt, balance, registeredDevicesStr,
+                breachType.equals("BREACH_80") ? "%80 bütçe kotası" : "%100 bütçe kotası (ceza tarifesi aktif)"
         );
     }
 
