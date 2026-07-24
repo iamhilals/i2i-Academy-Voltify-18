@@ -377,11 +377,12 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center justify-between">
                   <span>Güvenli Limit (W)</span>
+                  <span className="text-[10px] font-black text-[#4C811F] bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-md border border-emerald-200/50">AI Otomatik Atar</span>
                 </label>
                 <div className="relative">
                   <input 
                     type="number" 
-                    value={safeLimit}
+                    value={safeLimit || '1500'}
                     onChange={(e) => setSafeLimit(e.target.value)}
                     placeholder="Örn: 1800" 
                     className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#182119] border-2 border-gray-100 dark:border-emerald-950/40 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900 dark:text-white"
