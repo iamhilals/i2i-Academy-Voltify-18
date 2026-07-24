@@ -42,7 +42,7 @@ public class TelemetryConsumerService {
         this.ecoPetService = ecoPetService;
     }
 
-    @KafkaListener(topics = "appliance-telemetry-topic", groupId = "voltify-telemetry-group")
+    @KafkaListener(topics = "telemetry", groupId = "voltify-telemetry-group")
     public void listenTelemetry(String message) {
         try {
             TelemetryEvent event = objectMapper.readValue(message, TelemetryEvent.class);

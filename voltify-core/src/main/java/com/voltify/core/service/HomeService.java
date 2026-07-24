@@ -1,13 +1,15 @@
 package com.voltify.core.service;
 
+import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.voltify.core.dto.HomeUpdateRequest;
-import com.voltify.core.entity.Appliance;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.voltify.core.dto.HomeStatusResponse;
 import com.voltify.core.dto.HomeUpdateRequest;
@@ -93,7 +95,7 @@ public class HomeService {
         // Telemetry Sensors bu mesajı yakalayıp yeni evi simülasyon listesine ekleyecek
         try {
             String homeJson = objectMapper.writeValueAsString(savedHome);
-            kafkaProducerService.sendMessage("home-registration-topic", homeJson);
+            kafkaProducerService.sendMessage("asset-registration", homeJson);
         } catch (Exception e) {
             System.err.println("Kafka'ya mesaj gönderilirken hata oluştu: " + e.getMessage());
         }
@@ -138,12 +140,20 @@ public class HomeService {
     }
 
     // Şartname: Historical Trend Delivery - Geçmiş tüketim grafikleri için
-    // PostgreSQL'deki günlük anlık görüntüleri (snapshot) döndürür
+    // PostgreSQL'deki günlük anlık görüntüleri (snapshot) döndürür (Pagination & Date Filter destekli)
     public List<ConsumptionSnapshot> getHomeHistory(Long homeId) {
         Home home = homeRepository.findById(homeId)
             .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
         assertOwnership(home);
         return consumptionSnapshotRepository.findByHomeIdOrderBySnapshotDateAsc(homeId);
+    }
+
+    public Page<ConsumptionSnapshot> getHomeHistoryPage(Long homeId, int page, int size, LocalDate from, LocalDate to) {
+        Home home = homeRepository.findById(homeId)
+            .orElseThrow(() -> new RuntimeException("Home not found: " + homeId));
+        assertOwnership(home);
+        Pageable pageable = PageRequest.of(page, size);
+        return consumptionSnapshotRepository.findByHomeIdAndDateRange(homeId, from, to, pageable);
     }
 
     // Yardımcı: SecurityContextHolder'dan şu an giriş yapmış kullanıcıyı al

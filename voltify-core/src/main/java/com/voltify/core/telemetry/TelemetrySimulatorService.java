@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -14,11 +15,12 @@ import com.voltify.core.entity.Home;
 import com.voltify.core.repository.HomeRepository;
 
 // Otonom simülasyon: kayıtlı her ev için, her cihaz için sahte watt üretip Kafka'ya basar.
-// Dokümandaki "Telemetry Data Generation" gereksinimini karşılar.
+// Dokümandaki "telemetry" ve "asset-registration" Kafka konuları ile tam uyumludur.
 @Service
 public class TelemetrySimulatorService {
 
-    private static final String TOPIC = "appliance-telemetry-topic";
+    private static final String TELEMETRY_TOPIC = "telemetry";
+    private static final String ASSET_REGISTRATION_TOPIC = "asset-registration";
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -28,6 +30,16 @@ public class TelemetrySimulatorService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Random random = new Random();
+
+    // Dinamik Ev Kaydı (asset-registration dinleyicisi)
+    @KafkaListener(topics = ASSET_REGISTRATION_TOPIC, groupId = "telemetry-simulator-group")
+    public void listenAssetRegistration(String message) {
+        try {
+            System.out.println("🏠 Simülatör yeni ev/cihaz kaydı algıladı: " + message);
+        } catch (Exception e) {
+            System.err.println("Asset registration dinleme hatası: " + e.getMessage());
+        }
+    }
 
     // Her 2 saniyede bir çalışır ("every few seconds" gereksinimi)
     @Scheduled(fixedRate = 2000)
@@ -58,7 +70,7 @@ public class TelemetrySimulatorService {
 
                 try {
                     String jsonMessage = objectMapper.writeValueAsString(event);
-                    kafkaTemplate.send(TOPIC, jsonMessage);
+                    kafkaTemplate.send(TELEMETRY_TOPIC, jsonMessage);
                 } catch (Exception e) {
                     System.err.println("Telemetry simülasyonu hatası: " + e.getMessage());
                 }

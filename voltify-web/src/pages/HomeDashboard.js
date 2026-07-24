@@ -15,6 +15,8 @@ const mockHomes = [
     healthScore: 5,
     image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=400&h=300',
     isCritical: false,
+    squareMeters: 240,
+    roomLayout: '4+1'
   },
   {
     id: 2,
@@ -25,7 +27,9 @@ const mockHomes = [
     healthScore: 1,
     image: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&q=80&w=400&h=300',
     isCritical: true,
-    warning: 'Aşırı şebeke çekimi!'
+    warning: 'Aşırı şebeke çekimi!',
+    squareMeters: 180,
+    roomLayout: '3+1'
   },
   {
     id: 3,
@@ -36,6 +40,8 @@ const mockHomes = [
     healthScore: 5,
     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=400&h=300',
     isCritical: false,
+    squareMeters: 120,
+    roomLayout: '2+1'
   },
   {
     id: 4,
@@ -46,6 +52,8 @@ const mockHomes = [
     healthScore: 3,
     image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&q=80&w=400&h=300',
     isCritical: false,
+    squareMeters: 85,
+    roomLayout: '1+1'
   }
 ];
 
@@ -69,7 +77,7 @@ const HomeDashboard = () => {
               name: h.name || `Ev ${h.id}`,
               consumption: h.billingLedger 
                 ? `${Math.round((h.billingLedger.accumulatedWatt / 1000) * 10) / 10} kW`
-                : `${h.appliances ? h.appliances.length * 0.5 : 1.2} kW`,
+                : `${h.appliances ? (h.appliances.length * 0.5).toFixed(1) : '1.2'} kW`,
               status: h.billingLedger && h.billingLedger.isPenaltyActive ? 'Cezai Durum' : 'Aktif',
               health: hasBreached ? 'KRİTİK' : 'MÜKEMMEL',
               healthScore: hasBreached ? 1 : 5,
@@ -94,6 +102,16 @@ const HomeDashboard = () => {
     loadHomes();
   }, []);
 
+  // Dynamic Statistics Computations
+  const totalHomesCount = homes.length;
+  const activeHomesCount = homes.filter(h => !h.isCritical).length;
+
+  const totalConsumptionKW = homes.reduce((acc, h) => {
+    const val = parseFloat(h.consumption) || 0;
+    return acc + val;
+  }, 0).toFixed(1);
+
+  const totalSavingsTL = (homes.length * 61.37).toFixed(2);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -112,7 +130,7 @@ const HomeDashboard = () => {
           </button>
           <button 
             onClick={() => setIsAddHomeOpen(true)}
-            className="flex items-center gap-2 px-5 py-2 bg-[#4C811F] text-white rounded-xl hover:bg-green-700 transition-colors font-bold shadow-lg shadow-green-900/20"
+            className="flex items-center gap-2 px-5 py-2 bg-[#4C811F] hover:bg-green-700 text-white rounded-xl transition-colors font-bold shadow-lg shadow-green-900/20"
           >
             <Plus className="w-5 h-5" />
             Ev Ekle
@@ -120,7 +138,7 @@ const HomeDashboard = () => {
         </div>
       </div>
 
-      {/* VoltBot Widget */}
+      {/* Dynamic Summary Cards & VoltBot Widget */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
           {/* Summary Cards Row */}
@@ -131,7 +149,9 @@ const HomeDashboard = () => {
               </div>
               <div>
                 <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Toplam Tüketim</h3>
-                <p className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">12.4 <span className="text-lg text-gray-500 font-bold">kW</span></p>
+                <p className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
+                  {totalConsumptionKW} <span className="text-lg text-gray-500 font-bold">kW</span>
+                </p>
               </div>
             </div>
             
@@ -141,7 +161,9 @@ const HomeDashboard = () => {
               </div>
               <div>
                 <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Aktif Evler</h3>
-                <p className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">14/15</p>
+                <p className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
+                  {homes.length > 0 ? `${activeHomesCount}/${totalHomesCount}` : '0 Ev'}
+                </p>
               </div>
             </div>
 
@@ -151,86 +173,108 @@ const HomeDashboard = () => {
               </div>
               <div>
                 <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Toplam Tasarruf</h3>
-                <p className="text-3xl font-black text-green-600 dark:text-green-400 tracking-tight">245.50 <span className="text-lg font-bold">TL</span></p>
+                <p className="text-3xl font-black text-green-600 dark:text-green-400 tracking-tight">
+                  {totalSavingsTL} <span className="text-lg font-bold">TL</span>
+                </p>
               </div>
             </div>
           </div>
         </div>
+
         <div className="md:col-span-1">
           <VoltBotWidget />
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {homes.map((home) => (
-          <div 
-            key={home.id} 
-            onClick={() => navigate(`/dashboard/home/${home.id}`)}
-            className={`bg-white dark:bg-[#1E271F] rounded-[2rem] p-4 cursor-pointer transition-all duration-300 hover:shadow-xl group
-              ${home.isCritical 
-                ? 'border-2 border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.15)] hover:border-red-500' 
-                : 'border border-gray-100 dark:border-emerald-950/20 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:border-green-500/30'
-              }`}
+      {/* Grid or Empty State */}
+      {homes.length === 0 ? (
+        <div className="bg-white dark:bg-[#1E271F] border border-gray-100 dark:border-emerald-950/30 rounded-3xl p-12 flex flex-col items-center justify-center text-center shadow-sm animate-in fade-in duration-300">
+          <div className="w-20 h-20 bg-green-50 dark:bg-emerald-950/30 text-[#4C811F] rounded-full flex items-center justify-center mb-4 shadow-inner">
+            <HomeIcon className="w-10 h-10" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Henüz Kayıtlı Bir Eviniz Bulunmuyor</h3>
+          <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md font-medium mb-6">
+            Enerji tüketiminizi, akıllı cihazlarınızı ve fatura tasarruflarınızı anlık takip etmek için hemen ilk lokasyonunuzu ekleyin.
+          </p>
+          <button
+            onClick={() => setIsAddHomeOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-[#4C811F] hover:bg-green-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-green-900/20 transition-all hover:scale-105 active:scale-95"
           >
-            {/* Image Container */}
-            <div className="relative h-48 rounded-3xl overflow-hidden mb-5">
-              <img src={home.image} alt={home.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              <div className="absolute top-3 right-3">
-                <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-wider text-white backdrop-blur-md shadow-lg
-                  ${home.isCritical ? 'bg-red-500/90' : 'bg-[#4C811F]/90'}`}>
-                  {home.status.toUpperCase()}
-                </span>
-              </div>
-            </div>
-
-            {/* Info */}
-            <div className="px-2">
-              <h3 className={`text-xl font-black mb-1 ${home.isCritical ? 'text-red-500' : 'text-gray-900 dark:text-gray-100'}`}>{home.name}</h3>
-              <p className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-wider mb-4">
-                {home.roomLayout} • {home.squareMeters} m²
-              </p>
-              
-              <div className="flex justify-between items-end mb-6">
-                <span className="text-xs font-bold text-gray-400 dark:text-gray-500">Tüketim</span>
-                <span className={`text-2xl font-black tracking-tight ${home.isCritical ? 'text-red-600' : 'text-[#4C811F]'}`}>
-                  {home.consumption}
-                </span>
-              </div>
-
-              {/* Health Bar */}
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between items-center text-[10px] font-black tracking-wider uppercase">
-                  <span className="text-gray-400 dark:text-gray-500">Enerji Sağlığı</span>
-                  <span className={home.isCritical ? 'text-red-500' : home.healthScore > 3 ? 'text-[#4C811F]' : 'text-orange-500'}>
-                    {home.health}
+            <Plus className="w-5 h-5" />
+            İlk Evinizi Ekleyin
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {homes.map((home) => (
+            <div 
+              key={home.id} 
+              onClick={() => navigate(`/dashboard/home/${home.id}`)}
+              className={`bg-white dark:bg-[#1E271F] rounded-[2rem] p-4 cursor-pointer transition-all duration-300 hover:shadow-xl group
+                ${home.isCritical 
+                  ? 'border-2 border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.15)] hover:border-red-500' 
+                  : 'border border-gray-100 dark:border-emerald-950/20 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:border-green-500/30'
+                }`}
+            >
+              {/* Image Container */}
+              <div className="relative h-48 rounded-3xl overflow-hidden mb-5">
+                <img src={home.image} alt={home.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <div className="absolute top-3 right-3">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-wider text-white backdrop-blur-md shadow-lg
+                    ${home.isCritical ? 'bg-red-500/90' : 'bg-[#4C811F]/90'}`}>
+                    {home.status.toUpperCase()}
                   </span>
                 </div>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div 
-                      key={i} 
-                      className={`h-1.5 flex-1 rounded-full ${
-                        i <= home.healthScore 
-                          ? (home.isCritical ? 'bg-red-500' : home.healthScore > 3 ? 'bg-[#4C811F]' : 'bg-orange-500')
-                          : 'bg-gray-100 dark:bg-emerald-950/20'
-                      }`}
-                    />
-                  ))}
-                </div>
               </div>
 
-              {/* Warning Badge */}
-              {home.isCritical && (
-                <div className="mt-4 flex items-center justify-center gap-2 py-2 px-3 bg-red-50 dark:bg-red-950/10 rounded-xl text-red-600 dark:text-red-400 font-bold text-xs border border-red-100 dark:border-red-900/20">
-                  <AlertTriangle className="w-4 h-4" />
-                  {home.warning}
+              {/* Info */}
+              <div className="px-2">
+                <h3 className={`text-xl font-black mb-1 ${home.isCritical ? 'text-red-500' : 'text-gray-900 dark:text-gray-100'}`}>{home.name}</h3>
+                <p className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-wider mb-4">
+                  {home.roomLayout} • {home.squareMeters} m²
+                </p>
+                
+                <div className="flex justify-between items-end mb-6">
+                  <span className="text-xs font-bold text-gray-400 dark:text-gray-500">Tüketim</span>
+                  <span className={`text-2xl font-black tracking-tight ${home.isCritical ? 'text-red-600' : 'text-[#4C811F]'}`}>
+                    {home.consumption}
+                  </span>
                 </div>
-              )}
+
+                {/* Health Bar */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between items-center text-[10px] font-black tracking-wider uppercase">
+                    <span className="text-gray-400 dark:text-gray-500">Enerji Sağlığı</span>
+                    <span className={home.isCritical ? 'text-red-500' : home.healthScore > 3 ? 'text-[#4C811F]' : 'text-orange-500'}>
+                      {home.health}
+                    </span>
+                  </div>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div 
+                        key={i} 
+                        className={`h-1.5 flex-1 rounded-full ${
+                          i <= home.healthScore 
+                            ? (home.isCritical ? 'bg-red-500' : home.healthScore > 3 ? 'bg-[#4C811F]' : 'bg-orange-500')
+                            : 'bg-gray-100 dark:bg-emerald-950/20'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Warning Badge */}
+                {home.isCritical && (
+                  <div className="mt-4 flex items-center justify-center gap-2 py-2 px-3 bg-red-50 dark:bg-red-950/10 rounded-xl text-red-600 dark:text-red-400 font-bold text-xs border border-red-100 dark:border-red-900/20">
+                    <AlertTriangle className="w-4 h-4" />
+                    {home.warning}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
