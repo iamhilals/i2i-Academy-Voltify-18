@@ -66,6 +66,24 @@ const HomeDetail = () => {
     }
   }, [id]);
 
+  const handleToggleDevice = async (deviceToToggle) => {
+    const isOff = (deviceToToggle.currentWattage || 0) === 0;
+    const nextWattage = isOff ? 250 : 0;
+
+    setAppliances(prev => prev.map(a => a.id === deviceToToggle.id ? { ...a, currentWattage: nextWattage } : a));
+    if (selectedDevice && selectedDevice.id === deviceToToggle.id) {
+      setSelectedDevice(prev => ({ ...prev, currentWattage: nextWattage }));
+    }
+
+    try {
+      await homeService.updateAppliance(id, deviceToToggle.id, {
+        name: deviceToToggle.name
+      });
+    } catch (err) {
+      console.warn('Backend update failed:', err);
+    }
+  };
+
   const home = homeState || { 
     ...mockHomeData, 
     id: parseInt(id) || 1, 
@@ -372,6 +390,7 @@ const HomeDetail = () => {
         isOpen={!!selectedDevice} 
         onClose={() => setSelectedDevice(null)} 
         device={selectedDevice} 
+        onToggleDevice={handleToggleDevice}
       />
 
       {/* Add Device Slideover */}
