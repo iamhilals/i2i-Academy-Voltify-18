@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Server, Activity, AlertTriangle, Power, Zap, MapPin, Search } from 'lucide-react';
+import { Server, Activity, AlertTriangle, Power, Zap, MapPin, Search, Trash2 } from 'lucide-react';
 import { homeService } from '../services/homeService';
 import { getDeviceLocalImage } from '../utils/deviceMapping';
 
@@ -102,6 +102,18 @@ const Devices = () => {
       await homeService.setAppliancePower(targetDev.homeId, targetDev.id, nextOn);
     } catch (err) {
       // Hata toast'ı api.js interceptor'ında gösterilir
+    }
+  };
+
+  const handleDeleteAppliance = async (e, deviceId, homeId, deviceName) => {
+    e.stopPropagation();
+    if (window.confirm(`"${deviceName}" cihazını silmek istediğinizden emin misiniz?`)) {
+      try {
+        await homeService.deleteAppliance(homeId, deviceId);
+        setDevices(prev => prev.filter(d => d.id !== deviceId));
+      } catch (err) {
+        console.error('Cihaz silinemedi:', err);
+      }
     }
   };
 
@@ -252,13 +264,23 @@ const Devices = () => {
                     )}
                   </div>
 
-                  {/* Toggle Button */}
-                  <button 
-                    onClick={() => toggleDeviceStatus(device.id)}
-                    className={`w-11 h-6 rounded-full relative transition-colors ${isActive ? 'bg-[#4C811F]' : 'bg-gray-200'}`}
-                  >
-                    <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${isActive ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </button>
+                  {/* Actions: Toggle & Delete */}
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => toggleDeviceStatus(device.id)}
+                      className={`w-11 h-6 rounded-full relative transition-colors ${isActive ? 'bg-[#4C811F]' : 'bg-gray-200'}`}
+                      title={isActive ? 'Cihazı Kapat' : 'Cihazı Aç'}
+                    >
+                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${isActive ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteAppliance(e, device.id, device.homeId, device.name)}
+                      className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                      title="Cihazı Sil"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Device Image or Emoji Tile */}

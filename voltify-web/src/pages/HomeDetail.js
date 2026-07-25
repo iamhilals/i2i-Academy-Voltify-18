@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Activity, AlertTriangle, TurkishLira, PieChart as PieChartIcon, Zap, Plus } from 'lucide-react';
+import { ArrowLeft, Activity, AlertTriangle, TurkishLira, PieChart as PieChartIcon, Zap, Plus, Trash2 } from 'lucide-react';
 import { 
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -33,6 +33,21 @@ const HomeDetail = () => {
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
   const [homeState, setHomeState] = useState(null);
   const [appliances, setAppliances] = useState([]);
+
+  const handleDeleteAppliance = async (e, applianceId, applianceName) => {
+    e.stopPropagation();
+    if (window.confirm(`"${applianceName}" cihazını silmek istediğinizden emin misiniz?`)) {
+      try {
+        await homeService.deleteAppliance(id, applianceId);
+        setAppliances(prev => prev.filter(a => a.id !== applianceId));
+        if (selectedDevice && selectedDevice.id === applianceId) {
+          setSelectedDevice(null);
+        }
+      } catch (err) {
+        console.error('Cihaz silinemedi:', err);
+      }
+    }
+  };
   const [homeSamples, setHomeSamples] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -304,9 +319,18 @@ const HomeDetail = () => {
                               </span>
                             </div>
                           </div>
-                          {app.isAnomalous && (
-                            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
-                          )}
+                          <div className="flex items-center gap-2">
+                            {app.isAnomalous && (
+                              <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                            )}
+                            <button
+                              onClick={(e) => handleDeleteAppliance(e, app.id, app.name)}
+                              className="p-1.5 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                              title="Cihazı Sil"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Filter, Plus, Zap, Home as HomeIcon, PiggyBank, AlertTriangle } from 'lucide-react';
+import { Filter, Plus, Zap, Home as HomeIcon, PiggyBank, AlertTriangle, Trash2 } from 'lucide-react';
 import AddHomeSlideover from '../components/AddHomeSlideover';
 import VoltBotWidget from '../components/VoltBotWidget';
 import { homeService } from '../services/homeService';
@@ -18,6 +18,18 @@ const HomeDashboard = () => {
   // Default to empty array [] so new accounts start with 0 homes cleanly
   const [homes, setHomes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleDeleteHome = async (e, homeId, homeName) => {
+    e.stopPropagation();
+    if (window.confirm(`"${homeName}" lokasyonunu silmek istediğinizden emin misiniz?`)) {
+      try {
+        await homeService.deleteHome(homeId);
+        setHomes(prev => prev.filter(h => h.id !== homeId));
+      } catch (err) {
+        console.error('Ev silinemedi:', err);
+      }
+    }
+  };
 
   const loadHomes = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -203,6 +215,15 @@ const HomeDashboard = () => {
               {/* Image Container */}
               <div className="relative h-48 rounded-3xl overflow-hidden mb-5">
                 <img src={home.image} alt={home.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <div className="absolute top-3 left-3 z-10">
+                  <button
+                    onClick={(e) => handleDeleteHome(e, home.id, home.name)}
+                    className="p-2 bg-red-500/80 hover:bg-red-600 text-white rounded-full backdrop-blur-md shadow-lg transition-transform hover:scale-110"
+                    title="Evi Sil"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
                 <div className="absolute top-3 right-3">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-wider text-white backdrop-blur-md shadow-lg
                     ${home.isCritical ? 'bg-red-500/90' : 'bg-[#4C811F]/90'}`}>
