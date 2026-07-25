@@ -33,7 +33,7 @@ const HomeDetail = () => {
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
   const [homeState, setHomeState] = useState(null);
   const [appliances, setAppliances] = useState([]);
-  const [history, setHistory] = useState([]);
+  const [hourlyTrend, setHourlyTrend] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -50,6 +50,7 @@ const HomeDetail = () => {
           name: statusData.name || `Ev ${id}`,
           totalKwh: statusData.totalKwh || 0,
           currentBalance: statusData.currentBalance || 0,
+          baseRate: statusData.baseRate || 2.07,
           budgetQuotaTry: statusData.budgetQuotaTry || 1500,
           status: statusData.isPenaltyActive ? 'Cezai Durum' : 'Optimal',
           isCritical: statusData.isPenaltyActive || false,
@@ -72,30 +73,61 @@ const HomeDetail = () => {
       }
     }
 
-    // Günlük geçmiş trendi: PostgreSQL snapshot'ları (grafikler için)
-    async function fetchHistory() {
-      try {
-        const data = await homeService.getHomeHistory(id);
-        if (!active) return;
-        const rows = Array.isArray(data) ? data : (data && Array.isArray(data.content) ? data.content : []);
-        setHistory(rows);
-      } catch (err) {
-        // Sessizce geç; grafik canlı veriyle fallback yapar
-      }
-    }
-
     fetchStatus();
-    fetchHistory();
 
     // Şartname NFR: 1-2 sn agresif polling ile canlı güncelleme (UI donmadan)
     const statusTimer = setInterval(fetchStatus, 2000);
-    const historyTimer = setInterval(fetchHistory, 15000);
     return () => {
       active = false;
       clearInterval(statusTimer);
-      clearInterval(historyTimer);
     };
   }, [id]);
+
+  // 24 saatlik trend: cihazların GERÇEK ölçümlerinden (Ignite) saat başına toplam güç → kWh & TL.
+  // (Kümülatif snapshot yerine; o restart'ta sıfırlanıp azalan/yanıltıcı çizgi üretiyordu.)
+  useEffect(() => {
+    if (!id || appliances.length === 0) return undefined;
+    let active = true;
+    const ids = appliances.map((a) => a.id);
+    const rate = (homeState && homeState.baseRate) || 2.07;
+
+    const buildTrend = async () => {
+      try {
+        const readingsArrays = await Promise.all(
+          ids.map((aid) => homeService.getApplianceReadings(id, aid, 1440).catch(() => []))
+        );
+        if (!active) return;
+        // Her cihaz için saatlik ortalama watt
+        const perAppl = readingsArrays.map((arr) => {
+          const sum = new Array(24).fill(0);
+          const cnt = new Array(24).fill(0);
+          (Array.isArray(arr) ? arr : []).forEach((r) => {
+            const h = new Date(r.timestampMillis).getHours();
+            sum[h] += r.watt; cnt[h] += 1;
+          });
+          return sum.map((s, h) => (cnt[h] ? s / cnt[h] : null));
+        });
+        // Saat başına ev toplam gücü → kWh (ort. kW × 1 saat) ve TL
+        const rows = [];
+        for (let h = 0; h < 24; h++) {
+          let watts = 0; let any = false;
+          perAppl.forEach((pa) => { if (pa[h] != null) { watts += pa[h]; any = true; } });
+          if (any) {
+            const kwh = +(watts / 1000).toFixed(3);
+            rows.push({ time: `${String(h).padStart(2, '0')}:00`, consumption: kwh, cost: +(kwh * rate).toFixed(2) });
+          }
+        }
+        setHourlyTrend(rows);
+      } catch (e) {
+        // sessizce geç
+      }
+    };
+
+    buildTrend();
+    const timer = setInterval(buildTrend, 20000);
+    return () => { active = false; clearInterval(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, appliances.map((a) => a.id).join(','), homeState && homeState.baseRate]);
 
   const handleToggleDevice = async (deviceToToggle) => {
     const nextOn = deviceToToggle.powerOn === false; // kapalıysa aç, açıksa kapat
@@ -129,18 +161,13 @@ const HomeDetail = () => {
   // Anlık toplam cihaz gücü (canlı telemetriden)
   const totalDeviceWatt = appliances.reduce((acc, a) => acc + (a.currentWattage || 0), 0);
 
-  // Günlük trend: PostgreSQL snapshot'larından türetilir (kWh = accumulatedWatt / 1.800.000).
-  // Snapshot yoksa canlı anlık değerle tek noktalı fallback gösterilir.
-  const sortedHistory = [...history].sort((a, b) => new Date(a.snapshotDate) - new Date(b.snapshotDate));
-  const dailyTrendData = sortedHistory.length > 0
-    ? sortedHistory.map((s) => ({
-        time: new Date(s.snapshotDate).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }),
-        consumption: +(((s.dailyWatt || 0) / 1800000)).toFixed(2),
-        cost: +((s.dailyCost || 0)).toFixed(2),
-      }))
-    : [{ time: 'Bugün', consumption: +((totalDeviceWatt / 1000)).toFixed(2), cost: +currentBalance.toFixed(2) }];
+  // 24 saatlik trend gerçek ölçümlerden (yukarıdaki effect doldurur).
+  // Henüz yeterli ölçüm yoksa anlık değerle tek noktalı gösterim.
+  const dailyTrendData = hourlyTrend.length > 0
+    ? hourlyTrend
+    : [{ time: 'Şimdi', consumption: +((totalDeviceWatt / 1000)).toFixed(2), cost: +currentBalance.toFixed(2) }];
 
-  const weeklyCostData = dailyTrendData.map((d) => ({ day: d.time, cost: d.cost }));
+  const weeklyCostData = dailyTrendData;
 
   // Tüketim dağılımı: cihaz tiplerine göre anlık watt toplamı (canlı)
   const categoryMap = {};
@@ -359,7 +386,7 @@ const HomeDetail = () => {
           <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm">
             <div className="flex items-center gap-2 mb-6">
               <Activity className="w-5 h-5 text-gray-400" />
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Günlük Tüketim Trendi (kWh)</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">24 Saatlik Tüketim Trendi (kWh)</h3>
             </div>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -387,13 +414,13 @@ const HomeDetail = () => {
             <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
                 <TurkishLira className="w-5 h-5 text-gray-400" />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Günlük Maliyet (₺)</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">24 Saatlik Maliyet (₺)</h3>
               </div>
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={weeklyCostData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 600 }} dy={5} />
+                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 600 }} minTickGap={24} dy={5} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 600 }} />
                     <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }} />
                     <Bar dataKey="cost" fill="#3B82F6" radius={[4, 4, 0, 0]} />

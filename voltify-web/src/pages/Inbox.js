@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Mail, Search, Inbox as InboxIcon, Star, Trash2, ArrowRight, Zap, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { inboxService } from '../services/inboxService';
+import MarkdownText from '../components/MarkdownText';
 
 const mockEmails = [
   {
@@ -181,7 +182,7 @@ const AlertContent = ({ msg, meta }) => {
         </div>
       </div>
       <div className="bg-gray-50 dark:bg-[#182119] rounded-2xl p-6 border border-gray-100 dark:border-emerald-950/30">
-        <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed whitespace-pre-line">{msg.body}</p>
+        <MarkdownText text={msg.body} className="text-gray-700 dark:text-gray-300 font-medium text-sm" />
       </div>
       {msg.emailSent && (
         <p className="text-xs text-gray-400 flex items-center gap-1.5">
