@@ -13,6 +13,7 @@ public class ApplianceStatus {
     private double currentWattage;   // son ölçülen anlık güç (Watt)
     private double maxSafeWattage;   // güvenli güç limiti (Watt)
     private boolean isAnomalous;     // 3+ ardışık ihlal ile anomali mi?
+    private boolean powerOn;         // cihaz açık mı?
     private double totalKwh;         // şimdiye kadarki toplam tüketim (kWh)
     private double totalCost;        // toplam tüketimin tahmini maliyeti (TL)
 
@@ -38,6 +39,9 @@ public class ApplianceStatus {
 
     public boolean getIsAnomalous() { return isAnomalous; }
     public void setIsAnomalous(boolean isAnomalous) { this.isAnomalous = isAnomalous; }
+
+    public boolean getPowerOn() { return powerOn; }
+    public void setPowerOn(boolean powerOn) { this.powerOn = powerOn; }
 
     public double getTotalKwh() { return totalKwh; }
     public void setTotalKwh(double totalKwh) { this.totalKwh = totalKwh; }

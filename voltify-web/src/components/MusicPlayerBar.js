@@ -214,8 +214,8 @@ const MusicPlayerBar = () => {
         setIsHovered(false);
         setShowPlaylist(false);
       }}
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 ease-out"
-      style={{ width: isHovered ? '92%' : '290px', maxWidth: isHovered ? '56rem' : '290px' }}
+      className="fixed bottom-8 right-28 z-40 transition-all duration-500 ease-out"
+      style={{ width: isHovered ? '46rem' : '230px', maxWidth: isHovered ? '46rem' : '230px' }}
     >
       
       {/* Playlist Popover Menu (Only when expanded & toggled) */}
@@ -270,25 +270,25 @@ const MusicPlayerBar = () => {
 
       {/* COMPACT DEFAULT VIEW (When NOT hovered) */}
       {!isHovered ? (
-        <div className="bg-gray-900/90 dark:bg-[#1E271F]/95 backdrop-blur-xl border border-white/10 text-white rounded-full px-4 py-2.5 shadow-2xl flex items-center justify-between gap-3 cursor-pointer group hover:border-green-500/50 transition-all duration-300">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${currentTrack.coverColor} flex items-center justify-center shadow-md shrink-0 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }}>
-              <Disc className="w-4 h-4 text-white" />
+        <div className="bg-gray-900/90 dark:bg-[#1E271F]/95 backdrop-blur-xl border border-white/10 text-white rounded-full px-3 py-1.5 shadow-2xl flex items-center justify-between gap-2.5 cursor-pointer group hover:border-green-500/50 transition-all duration-300">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className={`w-7 h-7 rounded-full bg-gradient-to-r ${currentTrack.coverColor} flex items-center justify-center shadow-md shrink-0 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }}>
+              <Disc className="w-3.5 h-3.5 text-white" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold truncate text-white group-hover:text-green-400 transition-colors">{currentTrack.title}</p>
-              <p className="text-[10px] text-gray-400 font-medium truncate">{currentTrack.artist}</p>
+              <p className="text-[11px] font-bold truncate text-white group-hover:text-green-400 transition-colors">{currentTrack.title}</p>
+              <p className="text-[9px] text-gray-400 font-medium truncate">{currentTrack.artist}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button 
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
               onClick={togglePlay}
-              className="w-8 h-8 rounded-full bg-[#4C811F] hover:bg-green-600 text-white flex items-center justify-center shadow-md transition-transform active:scale-95"
+              className="w-7 h-7 rounded-full bg-[#4C811F] hover:bg-green-600 text-white flex items-center justify-center shadow-md transition-transform active:scale-95"
             >
-              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+              {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
             </button>
-            <Maximize2 className="w-3.5 h-3.5 text-gray-400 group-hover:text-white transition-colors" />
+            <Maximize2 className="w-3 h-3 text-gray-400 group-hover:text-white transition-colors" />
           </div>
         </div>
       ) : (

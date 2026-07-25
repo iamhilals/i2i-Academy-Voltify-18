@@ -52,5 +52,13 @@ export const homeService = {
   async deleteAppliance(homeId, applianceId) {
     const response = await API.delete(`/api/homes/${homeId}/appliances/${applianceId}`);
     return response.data;
+  },
+
+  // Cihazı aç/kapat (gerçek, kalıcı durum)
+  async setAppliancePower(homeId, applianceId, on) {
+    const response = await API.put(`/api/homes/${homeId}/appliances/${applianceId}/power`, null, {
+      params: { on },
+    });
+    return response.data;
   }
 };

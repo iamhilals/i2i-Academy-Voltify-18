@@ -48,71 +48,67 @@ const Devices = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [devices, setDevices] = useState([]);
 
-  const loadDevices = async () => {
+  // Canlı veriyi status endpoint'inden çek (gerçek watt/anomali/powerOn — 150 varsayılanı yok)
+  const loadDevices = async (silent = false) => {
     try {
       const homes = await homeService.getMyHomes();
-      if (Array.isArray(homes) && homes.length > 0) {
-        const allAppliances = [];
-        homes.forEach(h => {
-          if (Array.isArray(h.appliances)) {
-            h.appliances.forEach(a => {
-              allAppliances.push({
-                id: a.id,
-                homeId: h.id,
-                name: a.name,
-                type: a.type || 'Elektronik',
-                location: `${h.name} - ${a.room || 'Salon'}`,
-                currentWattage: a.currentWattage !== undefined ? a.currentWattage : 150,
-                status: (a.currentWattage !== undefined ? a.currentWattage : 150) > 0 ? 'active' : 'standby',
-                isAnomalous: a.isAnomalous || false,
-                image: a.image || 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?auto=format&fit=crop&q=80&w=150&h=150'
-              });
-            });
-          }
-        });
-        setDevices(allAppliances);
-      } else {
+      if (!Array.isArray(homes) || homes.length === 0) {
         setDevices([]);
+        return;
       }
+      const statuses = await Promise.all(homes.map(h => homeService.getHomeStatus(h.id).catch(() => null)));
+      const all = [];
+      statuses.forEach((st, i) => {
+        if (!st) return;
+        (st.appliances || []).forEach(a => {
+          const on = a.powerOn !== false;
+          const watt = Math.round(a.currentWattage || 0);
+          all.push({
+            id: a.id,
+            homeId: homes[i].id,
+            name: a.name,
+            type: a.type || 'Elektronik',
+            location: `${homes[i].name} - ${a.room || 'Salon'}`,
+            currentWattage: watt,
+            powerOn: on,
+            status: on ? 'active' : 'offline',
+            isAnomalous: a.isAnomalous || false,
+          });
+        });
+      });
+      setDevices(all);
     } catch (err) {
-      console.warn('Could not load user devices from backend:', err);
-      setDevices([]);
+      // Hata toast'ı api.js interceptor'ında gösterilir
+      if (!silent) setDevices([]);
     }
   };
 
   useEffect(() => {
     loadDevices();
+    const timer = setInterval(() => loadDevices(true), 3000);
+    return () => clearInterval(timer);
   }, []);
 
   const toggleDeviceStatus = async (deviceId) => {
     const targetDev = devices.find(d => d.id === deviceId);
     if (!targetDev) return;
+    const nextOn = !targetDev.powerOn;
 
-    const nextStatus = targetDev.status === 'active' ? 'standby' : 'active';
-    const nextWattage = nextStatus === 'active' ? 250 : 0;
-
-    setDevices(devices.map(dev => {
-      if (dev.id === deviceId) {
-        return { ...dev, status: nextStatus, currentWattage: nextWattage };
-      }
-      return dev;
-    }));
+    setDevices(devices.map(dev => dev.id === deviceId
+      ? { ...dev, powerOn: nextOn, status: nextOn ? 'active' : 'offline', currentWattage: nextOn ? dev.currentWattage : 0 }
+      : dev));
 
     try {
-      if (targetDev.homeId && targetDev.id) {
-        await homeService.updateAppliance(targetDev.homeId, targetDev.id, {
-          name: targetDev.name,
-          currentWattage: nextWattage,
-          isOn: nextStatus === 'active'
-        });
-      }
+      await homeService.setAppliancePower(targetDev.homeId, targetDev.id, nextOn);
     } catch (err) {
-      console.warn('Backend update failed:', err);
+      // Hata toast'ı api.js interceptor'ında gösterilir
     }
   };
 
-  const turnOffAllStandby = () => {
-    setDevices(devices.map(dev => dev.status === 'standby' ? { ...dev, status: 'offline', currentWattage: 0 } : dev));
+  const turnOffAllStandby = async () => {
+    const onDevices = devices.filter(d => d.powerOn);
+    setDevices(devices.map(dev => dev.powerOn ? { ...dev, powerOn: false, status: 'offline', currentWattage: 0 } : dev));
+    await Promise.all(onDevices.map(d => homeService.setAppliancePower(d.homeId, d.id, false).catch(() => {})));
   };
 
   const filteredDevices = devices.filter(dev => {

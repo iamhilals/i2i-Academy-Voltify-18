@@ -50,7 +50,9 @@ public class TelemetrySimulatorService {
             if (home.getAppliances() == null) continue;
 
             for (Appliance appliance : home.getAppliances()) {
-                double randomWatt = calculateRealisticWatt(appliance);
+                // Cihaz kapalıysa 0W üret (null = açık). Böylece aç/kapa gerçek etkiye sahip olur.
+                boolean on = appliance.getPowerOn() == null || appliance.getPowerOn();
+                double randomWatt = on ? calculateRealisticWatt(appliance) : 0.0;
 
                 TelemetryEvent event = new TelemetryEvent();
                 event.setHomeId(home.getId());
@@ -69,11 +71,8 @@ public class TelemetrySimulatorService {
     }
 
     // TSE / EPDK Standartlarına uygun gerçekçi cihaz güç tüketimi hesaplama
+    // (Aç/kapa kontrolü generateTelemetry içinde powerOn ile yapılır.)
     private double calculateRealisticWatt(Appliance appliance) {
-        if (appliance.getIsOn() != null && !appliance.getIsOn()) {
-            return 0.0;
-        }
-        
         String name = appliance.getName() != null ? appliance.getName().toLowerCase() : "";
         double safeLimit = appliance.getSafePowerLimit() > 0 ? appliance.getSafePowerLimit() : 1500.0;
         

@@ -25,6 +25,10 @@ public class Appliance {
     // Cihazın normal kabul edilen maksimum güç limiti (Watt)
     private Double safePowerLimit;
 
+    // Cihaz açık mı? Kapalıysa simülatör 0W üretir (null = açık kabul edilir)
+    @Column(name = "power_on")
+    private Boolean powerOn = true;
+
     // Cihazın hangi eve ait olduğunu belirten ilişki (Foreign Key)
     @ManyToOne
     @JoinColumn(name = "home_id", nullable = false)
@@ -34,21 +38,18 @@ public class Appliance {
     private String room;
     private String type;
 
-    @Column(columnDefinition = "boolean default true")
-    private Boolean isOn = true;
-
     // Getter ve Setter metotları
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
-    public Boolean getIsOn() { return isOn; }
-    public void setIsOn(Boolean isOn) { this.isOn = isOn; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
     public Double getSafePowerLimit() { return safePowerLimit; }
     public void setSafePowerLimit(Double safePowerLimit) { this.safePowerLimit = safePowerLimit; }
+
+    public Boolean getPowerOn() { return powerOn; }
+    public void setPowerOn(Boolean powerOn) { this.powerOn = powerOn; }
 
     public Home getHome() { return home; }
     public void setHome(Home home) { this.home = home; }

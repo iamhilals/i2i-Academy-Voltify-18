@@ -75,4 +75,16 @@ public class EcoPet {
 
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
+
+    // XP ekler ve gerekirse seviye atlatır (feed + ödül mekanizması ortak kullanır)
+    public void addExperience(int amount) {
+        int currentExp = this.experience + amount;
+        int threshold = this.level * 100;
+        if (threshold > 0 && currentExp >= threshold) {
+            this.level += 1;
+            this.experience = currentExp - threshold;
+        } else {
+            this.experience = currentExp;
+        }
+    }
 }

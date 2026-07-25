@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.voltify.core.entity.Appliance;
 import com.voltify.core.entity.BillingLedger;
 import com.voltify.core.entity.EventLog;
 import com.voltify.core.entity.Home;
@@ -70,7 +71,15 @@ public class TariffEngineService {
         state.setCurrentBalance(newBalance);
 
         // 4) Kota kontrolü
-        double wattUsageRatio = newWatt / home.getPowerQuotaWatt();
+        // Güç kotası ANLIK toplam güçle (tüm cihazların o anki watt toplamı) kıyaslanır.
+        // (Kümülatif ΣWatt ile değil — o saniyeler içinde limiti geçer ve penalty'yi anlamsızca tetiklerdi.)
+        double instantTotalWatt = 0.0;
+        if (home.getAppliances() != null) {
+            for (Appliance a : home.getAppliances()) {
+                instantTotalWatt += igniteService.getApplianceWatt(a.getId());
+            }
+        }
+        double wattUsageRatio = instantTotalWatt / home.getPowerQuotaWatt();
         double budgetUsageRatio = newBalance / home.getBudgetQuotaTry();
         double maxRatio = Math.max(wattUsageRatio, budgetUsageRatio);
 

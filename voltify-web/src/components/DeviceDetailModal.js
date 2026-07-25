@@ -90,7 +90,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice, homeId }) 
 
   if (!isOpen || !device) return null;
 
-  const isOff = (device.currentWattage || 0) === 0;
+  const isOff = device.powerOn === false;
   const currWatt = Math.round(device.currentWattage || 0);
   const safeLimit = Math.round(device.safePowerLimit || device.maxSafeWattage || 1500);
 

@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS homes (
     owner_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name             VARCHAR(255) NOT NULL,
     contact_email    VARCHAR(255) NOT NULL,
-    power_quota_watt DOUBLE PRECISION NOT NULL DEFAULT 3500.0,
+    power_quota_watt DOUBLE PRECISION NOT NULL DEFAULT 8800.0,
     budget_quota_try DOUBLE PRECISION NOT NULL DEFAULT 1500.0,
     base_rate        DOUBLE PRECISION NOT NULL DEFAULT 2.07,
     penalty_rate     DOUBLE PRECISION NOT NULL DEFAULT 5.18,
@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS appliances (
     name             VARCHAR(255) NOT NULL,
     safe_power_limit DOUBLE PRECISION,
     room             VARCHAR(255),
-    type             VARCHAR(255)
+    type             VARCHAR(255),
+    power_on         BOOLEAN DEFAULT TRUE
 );
 
 -- 4. Billing Ledgers (her ev için tek kayıt)

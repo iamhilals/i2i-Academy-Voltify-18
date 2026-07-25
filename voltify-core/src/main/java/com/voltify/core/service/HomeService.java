@@ -67,7 +67,7 @@ public class HomeService {
             home.setContactEmail(currentUser.getEmail() != null ? currentUser.getEmail() : "demo@voltify.com");
         }
         if (home.getPowerQuotaWatt() == null) {
-            home.setPowerQuotaWatt(3500.0);
+            home.setPowerQuotaWatt(8800.0); // ~40A tek faz ev ana hattı (gerçekçi anlık güç tavanı)
         }
         if (home.getBudgetQuotaTry() == null) {
             home.setBudgetQuotaTry(1500.0);
@@ -148,6 +148,7 @@ public class HomeService {
                 status.setMaxSafeWattage(appliance.getSafePowerLimit() != null ? appliance.getSafePowerLimit() : 0.0);
                 status.setCurrentWattage(igniteService.getApplianceWatt(appliance.getId()));
                 status.setIsAnomalous(igniteService.isApplianceAnomalous(appliance.getId()));
+                status.setPowerOn(appliance.getPowerOn() == null || appliance.getPowerOn());
                 double applKwh = igniteService.getApplianceTotalKwh(appliance.getId());
                 double rate = home.getBaseRate() != null ? home.getBaseRate() : 2.07;
                 status.setTotalKwh(round2(applKwh));
@@ -279,9 +280,30 @@ public class HomeService {
         if (updated.getSafePowerLimit() != null) appliance.setSafePowerLimit(updated.getSafePowerLimit());
         if (updated.getRoom() != null) appliance.setRoom(updated.getRoom());
         if (updated.getType() != null) appliance.setType(updated.getType());
-        if (updated.getIsOn() != null) appliance.setIsOn(updated.getIsOn());
 
         return applianceRepository.save(appliance);
+    }
+
+    // Cihazı aç/kapat. Kapalıysa simülatör 0W üretir; anında 0 göstermek için
+    // Ignite'taki canlı watt da sıfırlanır.
+    @Transactional
+    public Appliance setAppliancePower(Long homeId, Long applianceId, boolean on) {
+        Home home = homeRepository.findById(homeId)
+            .orElseThrow(() -> new ResourceNotFoundException("Ev bulunamadı: " + homeId));
+        assertOwnership(home);
+
+        Appliance appliance = applianceRepository.findById(applianceId)
+            .orElseThrow(() -> new ResourceNotFoundException("Cihaz bulunamadı: " + applianceId));
+        if (appliance.getHome() == null || !appliance.getHome().getId().equals(homeId)) {
+            throw new ResourceNotFoundException("Bu eve ait cihaz bulunamadı: " + applianceId);
+        }
+
+        appliance.setPowerOn(on);
+        Appliance saved = applianceRepository.save(appliance);
+        if (!on) {
+            igniteService.putApplianceWatt(applianceId, 0.0);
+        }
+        return saved;
     }
 
     // Yardımcı: Bu evin, isteği yapan kullanıcıya ait olup olmadığını kontrol eder

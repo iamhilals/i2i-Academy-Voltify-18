@@ -50,16 +50,7 @@ public class EcoPetService {
 
         pet.setFoodCount(pet.getFoodCount() - 1);
         pet.setHealthScore(pet.getHealthScore() + 15); // Beslemek canı doldurur
-        
-        // Deneyim ve Seviye atlama mantığı
-        int currentExp = pet.getExperience() + 20;
-        int nextLevelThreshold = pet.getLevel() * 100;
-        if (currentExp >= nextLevelThreshold) {
-            pet.setLevel(pet.getLevel() + 1);
-            pet.setExperience(currentExp - nextLevelThreshold);
-        } else {
-            pet.setExperience(currentExp);
-        }
+        pet.addExperience(20);                          // Deneyim + otomatik seviye atlama
 
         return ecoPetRepository.save(pet);
     }
@@ -71,16 +62,6 @@ public class EcoPetService {
         EcoPet pet = getOrCreatePet(user);
 
         pet.setHealthScore(pet.getHealthScore() - penaltyAmount);
-        return ecoPetRepository.save(pet);
-    }
-
-    @Transactional
-    public EcoPet awardFood(Long userId, int amount) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
-        EcoPet pet = getOrCreatePet(user);
-
-        pet.setFoodCount(pet.getFoodCount() + amount);
         return ecoPetRepository.save(pet);
     }
 

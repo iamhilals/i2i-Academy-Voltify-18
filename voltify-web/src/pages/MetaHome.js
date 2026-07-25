@@ -12,11 +12,11 @@ const getDeviceGLBConfig = (type, name) => {
   
   if (lower.includes('akıllı ampul')) return { path: '/smart_bulb.glb', targetHeight: 0.35, posY: 1.0 };
   if (lower.includes('akıllı priz')) return { path: '/smart_plug.glb', targetHeight: 0.35, posY: 0.1 };
-  if (lower.includes('ankastre fırın')) return { path: '/oven.glb', targetHeight: 0.95 };
+  if (lower.includes('ankastre fırın')) return { path: '/stove.glb', targetHeight: 0.95 };
   if (lower.includes('ankastre ocak')) return { path: '/stove.glb', targetHeight: 0.95 };
   if (lower.includes('masaüstü') || lower.includes('bilgisayar (masaüstü)')) return { path: '/desktop.glb', targetHeight: 1.0 };
   if (lower.includes('bulaşık makinesi')) return { path: '/dishwasher.glb', targetHeight: 0.85 };
-  if (lower.includes('buzdolabı')) return { path: '/fridge.glb', targetHeight: 1.8 };
+  if (lower.includes('buzdolabı')) return { path: '/freezer.glb', targetHeight: 1.8 };
   if (lower.includes('çamaşır kurutma makinesi')) return { path: '/dryer.glb', targetHeight: 0.85 };
   if (lower.includes('çamaşır makinesi')) return { path: '/washer.glb', targetHeight: 0.85 };
   if (lower.includes('derin dondurucu')) return { path: '/freezer.glb', targetHeight: 1.8 };

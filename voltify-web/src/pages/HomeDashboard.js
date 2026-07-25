@@ -24,28 +24,40 @@ const HomeDashboard = () => {
     try {
       const backendHomes = await homeService.getMyHomes();
       if (Array.isArray(backendHomes) && backendHomes.length > 0) {
+        // Canlı durumu (penalty + cihaz anomalisi) status endpoint'inden çek
+        const statuses = await Promise.all(
+          backendHomes.map(h => homeService.getHomeStatus(h.id).catch(() => null))
+        );
         const formatted = backendHomes.map((h, idx) => {
-          const hasBreached = h.billingLedger
-            ? (h.billingLedger.isPenaltyActive || h.billingLedger.accumulatedWatt >= h.powerQuotaWatt || h.billingLedger.currentBalance >= h.budgetQuotaTry)
-            : false;
-          // Gerçek kümülatif enerji (kWh) ve fatura (TL): ΣWatt / 1.800.000
-          const totalKwhVal = h.billingLedger ? (h.billingLedger.accumulatedWatt || 0) / 1800000 : 0;
-          const balanceVal = h.billingLedger ? (h.billingLedger.currentBalance || 0) : 0;
+          const st = statuses[idx];
+          // Kritik iki nedenle: (1) ev penalty durumunda, VEYA (2) bir cihaz güvenli limiti aşıp anomali veriyor
+          const isPenalty = st ? !!st.isPenaltyActive : (h.billingLedger ? !!h.billingLedger.isPenaltyActive : false);
+          const anomalousDevice = (st && Array.isArray(st.appliances))
+            ? st.appliances.find(a => a.isAnomalous)
+            : null;
+          const hasBreached = isPenalty || !!anomalousDevice;
+
+          const totalKwhVal = st ? (st.totalKwh || 0) : (h.billingLedger ? (h.billingLedger.accumulatedWatt || 0) / 1800000 : 0);
+          const balanceVal = st ? (st.currentBalance || 0) : (h.billingLedger ? (h.billingLedger.currentBalance || 0) : 0);
+
+          let warning = null;
+          if (isPenalty) warning = 'Bütçe veya güç kotası aşıldı!';
+          else if (anomalousDevice) warning = `${anomalousDevice.name} güvenli limiti aşıyor!`;
 
           return {
             id: h.id,
-            name: h.name || `Ev ${h.id}`,
+            name: (st && st.name) || h.name || `Ev ${h.id}`,
             totalKwh: totalKwhVal,
             balance: balanceVal,
             consumption: `${totalKwhVal.toFixed(1)} kWh`,
-            status: h.billingLedger && h.billingLedger.isPenaltyActive ? 'Cezai Durum' : 'Aktif',
+            status: isPenalty ? 'Cezai Durum' : (anomalousDevice ? 'Kritik' : 'Aktif'),
             health: hasBreached ? 'KRİTİK' : 'MÜKEMMEL',
             healthScore: hasBreached ? 1 : 5,
             image: h.imageUrl || mockHomeImages[idx % mockHomeImages.length],
             isCritical: hasBreached,
-            warning: hasBreached ? 'Bütçe veya güç kotası aşıldı!' : null,
-            squareMeters: h.squareMeters || 120,
-            roomLayout: h.roomLayout || '2+1',
+            warning,
+            squareMeters: (st && st.squareMeters) || h.squareMeters || 120,
+            roomLayout: (st && st.roomLayout) || h.roomLayout || '2+1',
           };
         });
         setHomes(formatted);

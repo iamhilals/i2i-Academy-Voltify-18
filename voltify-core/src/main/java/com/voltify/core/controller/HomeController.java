@@ -88,6 +88,15 @@ public class HomeController {
         return ResponseEntity.noContent().build();
     }
 
+    // Cihazı aç/kapat (gerçek, kalıcı durum). on=true|false
+    @PutMapping("/{homeId}/appliances/{applianceId}/power")
+    public ResponseEntity<Appliance> setAppliancePower(
+            @PathVariable Long homeId,
+            @PathVariable Long applianceId,
+            @RequestParam boolean on) {
+        return ResponseEntity.ok(homeService.setAppliancePower(homeId, applianceId, on));
+    }
+
     // Cihazın gerçek tüketim geçmişi (canlı grafik için). minutes: 60=1s, 360=6s, 1440=24s
     @GetMapping("/{homeId}/appliances/{applianceId}/readings")
     public ResponseEntity<List<ApplianceReading>> getApplianceReadings(

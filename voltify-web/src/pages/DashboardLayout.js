@@ -5,6 +5,7 @@ import ChatbotSlideover from '../components/ChatbotSlideover';
 import MusicPlayerBar from '../components/MusicPlayerBar';
 import { authService } from '../services/authService';
 import { inboxService } from '../services/inboxService';
+import { homeService } from '../services/homeService';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const DashboardLayout = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [liveKw, setLiveKw] = useState(0);
 
   const [userProfile, setUserProfile] = useState(() => {
     const user = authService.getCurrentUser();
@@ -103,6 +105,31 @@ const DashboardLayout = () => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Canlı toplam tüketim: tüm evlerin anlık güç toplamı (gerçek telemetriden), her 5 sn
+  useEffect(() => {
+    let active = true;
+    const fetchLive = async () => {
+      try {
+        const homes = await homeService.getMyHomes();
+        const list = Array.isArray(homes) ? homes : [];
+        const statuses = await Promise.all(list.map(h => homeService.getHomeStatus(h.id).catch(() => null)));
+        if (!active) return;
+        let watt = 0;
+        statuses.forEach(st => {
+          if (st && Array.isArray(st.appliances)) {
+            st.appliances.forEach(a => { watt += a.currentWattage || 0; });
+          }
+        });
+        setLiveKw(watt / 1000);
+      } catch (err) {
+        // Hata toast'ı api.js interceptor'ında gösterilir
+      }
+    };
+    fetchLive();
+    const timer = setInterval(fetchLive, 5000);
+    return () => { active = false; clearInterval(timer); };
   }, []);
 
   return (
@@ -256,7 +283,7 @@ const DashboardLayout = () => {
         <header className="h-20 bg-transparent flex items-center justify-between px-8 z-40 relative transition-colors">
           <div className="flex items-center gap-3 bg-blue-50/50 dark:bg-emerald-950/20 backdrop-blur-sm px-4 py-2 rounded-full border border-blue-100/50 dark:border-emerald-900/20">
             <BarChart3 className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-medium text-blue-900 dark:text-emerald-300">Canlı Şebeke Yükü: 12.4 GW</span>
+            <span className="text-sm font-medium text-blue-900 dark:text-emerald-300">Canlı Tüketim: {liveKw.toFixed(2)} kW</span>
           </div>
 
           <div className="flex items-center gap-6">

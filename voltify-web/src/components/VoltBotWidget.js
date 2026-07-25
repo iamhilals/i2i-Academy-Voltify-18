@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Shield, Gift, Heart, Edit2, Check, RefreshCw, FlaskConical } from 'lucide-react';
+import { Shield, Gift, Heart, Edit2, Check, RefreshCw, FlaskConical } from 'lucide-react';
 import { ecoPetService } from '../services/ecoPetService';
 
 // Sevimli "Yaprak/Filiz Bebek" (Eco-Sprout) karakterini render eden bileşen
@@ -131,23 +131,25 @@ const VoltBotWidget = () => {
   const [testMode, setTestMode] = useState(false);
   const [forcedMood, setForcedMood] = useState(null);
 
-  const fetchPet = async () => {
+  const fetchPet = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await ecoPetService.getPet();
       setPet(data);
-      setNewName(data.name);
+      if (!silent) setNewName(data.name); // isim düzenlemesini polling sırasında ezme
       setError('');
     } catch (err) {
-      setError('Eco-Pet verisi alınamadı.');
-      console.error(err);
+      if (!silent) setError('Eco-Pet verisi alınamadı.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchPet();
+    // Periyodik ödülü canlı yansıt (sağlık/mama zamanla toparlanır)
+    const timer = setInterval(() => fetchPet(true), 20000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleFeed = async () => {

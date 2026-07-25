@@ -98,22 +98,18 @@ const HomeDetail = () => {
   }, [id]);
 
   const handleToggleDevice = async (deviceToToggle) => {
-    const isOff = (deviceToToggle.currentWattage || 0) === 0;
-    const nextWattage = isOff ? 250 : 0;
-
-    setAppliances(prev => prev.map(a => a.id === deviceToToggle.id ? { ...a, currentWattage: nextWattage } : a));
+    const nextOn = deviceToToggle.powerOn === false; // kapalıysa aç, açıksa kapat
+    // Optimistik güncelle; 2 sn'lik polling gerçek durumu doğrular
+    const patch = { powerOn: nextOn, currentWattage: nextOn ? (deviceToToggle.currentWattage || 0) : 0 };
+    setAppliances(prev => prev.map(a => a.id === deviceToToggle.id ? { ...a, ...patch } : a));
     if (selectedDevice && selectedDevice.id === deviceToToggle.id) {
-      setSelectedDevice(prev => ({ ...prev, currentWattage: nextWattage }));
+      setSelectedDevice(prev => ({ ...prev, ...patch }));
     }
 
     try {
-      await homeService.updateAppliance(id, deviceToToggle.id, {
-        name: deviceToToggle.name,
-        currentWattage: nextWattage,
-        isOn: !isOff
-      });
+      await homeService.setAppliancePower(id, deviceToToggle.id, nextOn);
     } catch (err) {
-      console.warn('Update toggle error:', err);
+      // Hata toast'ı api.js interceptor'ında gösterilir
     }
   };
 
