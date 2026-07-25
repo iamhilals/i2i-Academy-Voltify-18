@@ -1,34 +1,46 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { X, AlertTriangle, Zap, Activity, DollarSign, Power } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { homeService } from '../services/homeService';
 import { getDeviceLocalImage } from '../utils/deviceMapping';
 
+const POINTS = 30;
 
+function fmtTimeFull(ms) {
+  return new Date(ms).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
 
-// Seçilen aralık için grafik verisini GERÇEK ölçümlerden üretir:
-const RANGE_MS = { '1h': 3600e3, '6h': 6 * 3600e3, '24h': 24 * 3600e3 };
-const BUCKETS = 30;
+function fmtTimeShort(ms) {
+  return new Date(ms).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+}
 
-function buildSeries(serverHistory, samples, range) {
-  const windowMs = RANGE_MS[range] || RANGE_MS['24h'];
-  const bucketMs = windowMs / BUCKETS;
+// 1 Saat modu: Son 30 ham sample'ı doğrudan gösterir — grafik her 2 sn'de akar
+function buildLiveSeries(samples) {
+  const recent = samples.slice(-POINTS);
+  return recent.map((s) => ({
+    time: fmtTimeFull(s.t),
+    wattage: s.watt,
+  }));
+}
+
+// 6 Saat / 24 Saat modu: Server geçmişini bucket'lar
+function buildHistorySeries(serverHistory, samples, rangeMs) {
+  const bucketMs = rangeMs / POINTS;
   const now = Date.now();
-
   const merged = [
     ...serverHistory.map((r) => ({ t: r.timestampMillis, watt: r.watt })),
     ...samples,
   ];
 
   const data = [];
-  for (let i = 0; i < BUCKETS; i++) {
-    const end = now - (BUCKETS - 1 - i) * bucketMs;
+  for (let i = 0; i < POINTS; i++) {
+    const end = now - (POINTS - 1 - i) * bucketMs;
     const start = end - bucketMs;
     const inBucket = merged.filter((p) => p.t > start && p.t <= end);
     const wattage = inBucket.length
       ? Math.round(inBucket.reduce((s, x) => s + x.watt, 0) / inBucket.length)
       : null;
-    data.push({ time: fmtTime(end), wattage });
+    data.push({ time: fmtTimeShort(end), wattage });
   }
   return data;
 }
@@ -37,9 +49,7 @@ function minutesForRange(range) {
   return range === '1h' ? 60 : range === '6h' ? 360 : 1440;
 }
 
-function fmtTime(ms) {
-  return new Date(ms).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-}
+const RANGE_MS_MAP = { '6h': 6 * 3600e3, '24h': 24 * 3600e3 };
 
 const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice, homeId }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -65,16 +75,16 @@ const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice, homeId }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, device?.id]);
 
-  // Backend'den GERÇEK cihaz geçmişini çek
+  // Backend'den GERÇEK cihaz geçmişini çek (6s ve 24s modları için)
   useEffect(() => {
-    if (!isOpen || !device || !homeId) return undefined;
+    if (!isOpen || !device || !homeId || range === '1h') return undefined;
     let active = true;
     const load = async () => {
       try {
         const rows = await homeService.getApplianceReadings(homeId, device.id, minutesForRange(range));
         if (active) setServerHistory(Array.isArray(rows) ? rows : []);
       } catch (e) {
-        // Hatalar toast ile gösterilir
+        // Backend erişilemezse sessizce geç
       }
     };
     load();
@@ -86,7 +96,12 @@ const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice, homeId }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, device?.id, range, homeId]);
 
-  const chartData = useMemo(() => buildSeries(serverHistory, samples, range), [serverHistory, samples, range]);
+  const chartData = useMemo(() => {
+    if (range === '1h') {
+      return buildLiveSeries(samples);
+    }
+    return buildHistorySeries(serverHistory, samples, RANGE_MS_MAP[range] || RANGE_MS_MAP['24h']);
+  }, [serverHistory, samples, range]);
 
   if (!isOpen || !device) return null;
 
