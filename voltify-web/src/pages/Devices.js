@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Activity, AlertTriangle, Power, Zap, MapPin, Search, Trash2 } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 import { homeService } from '../services/homeService';
 import { getDeviceLocalImage } from '../utils/deviceMapping';
 
@@ -105,15 +106,23 @@ const Devices = () => {
     }
   };
 
-  const handleDeleteAppliance = async (e, deviceId, homeId, deviceName) => {
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, deviceId: null, homeId: null, deviceName: '', isDeleting: false });
+
+  const openDeleteApplianceModal = (e, deviceId, homeId, deviceName) => {
     e.stopPropagation();
-    if (window.confirm(`"${deviceName}" cihazını silmek istediğinizden emin misiniz?`)) {
-      try {
-        await homeService.deleteAppliance(homeId, deviceId);
-        setDevices(prev => prev.filter(d => d.id !== deviceId));
-      } catch (err) {
-        console.error('Cihaz silinemedi:', err);
-      }
+    setDeleteModal({ isOpen: true, deviceId, homeId, deviceName, isDeleting: false });
+  };
+
+  const handleConfirmDeleteAppliance = async () => {
+    if (!deleteModal.deviceId || !deleteModal.homeId) return;
+    setDeleteModal(prev => ({ ...prev, isDeleting: true }));
+    try {
+      await homeService.deleteAppliance(deleteModal.homeId, deleteModal.deviceId);
+      setDevices(prev => prev.filter(d => d.id !== deleteModal.deviceId));
+    } catch (err) {
+      console.error('Cihaz silinemedi:', err);
+    } finally {
+      setDeleteModal({ isOpen: false, deviceId: null, homeId: null, deviceName: '', isDeleting: false });
     }
   };
 
@@ -274,7 +283,7 @@ const Devices = () => {
                       <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${isActive ? 'translate-x-5' : 'translate-x-0'}`} />
                     </button>
                     <button
-                      onClick={(e) => handleDeleteAppliance(e, device.id, device.homeId, device.name)}
+                      onClick={(e) => openDeleteApplianceModal(e, device.id, device.homeId, device.name)}
                       className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
                       title="Cihazı Sil"
                     >
@@ -336,6 +345,17 @@ const Devices = () => {
         </div>
       )}
 
+      {/* Modern Confirm Delete Modal for Devices */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, deviceId: null, homeId: null, deviceName: '', isDeleting: false })}
+        onConfirm={handleConfirmDeleteAppliance}
+        title="Cihazı Sil"
+        message={`"${deleteModal.deviceName}" cihazını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+        confirmText="Evet, Cihazı Sil"
+        cancelText="Vazgeç"
+        isLoading={deleteModal.isDeleting}
+      />
     </div>
   );
 };

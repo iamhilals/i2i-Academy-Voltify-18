@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Filter, Plus, Zap, Home as HomeIcon, PiggyBank, AlertTriangle, Trash2 } from 'lucide-react';
 import AddHomeSlideover from '../components/AddHomeSlideover';
 import VoltBotWidget from '../components/VoltBotWidget';
+import ConfirmModal from '../components/ConfirmModal';
 import { homeService } from '../services/homeService';
 
 const mockHomeImages = [
@@ -18,16 +19,23 @@ const HomeDashboard = () => {
   // Default to empty array [] so new accounts start with 0 homes cleanly
   const [homes, setHomes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, homeId: null, homeName: '', isDeleting: false });
 
-  const handleDeleteHome = async (e, homeId, homeName) => {
+  const openDeleteModal = (e, homeId, homeName) => {
     e.stopPropagation();
-    if (window.confirm(`"${homeName}" lokasyonunu silmek istediğinizden emin misiniz?`)) {
-      try {
-        await homeService.deleteHome(homeId);
-        setHomes(prev => prev.filter(h => h.id !== homeId));
-      } catch (err) {
-        console.error('Ev silinemedi:', err);
-      }
+    setDeleteModal({ isOpen: true, homeId, homeName, isDeleting: false });
+  };
+
+  const handleConfirmDeleteHome = async () => {
+    if (!deleteModal.homeId) return;
+    setDeleteModal(prev => ({ ...prev, isDeleting: true }));
+    try {
+      await homeService.deleteHome(deleteModal.homeId);
+      setHomes(prev => prev.filter(h => h.id !== deleteModal.homeId));
+    } catch (err) {
+      console.error('Ev silinemedi:', err);
+    } finally {
+      setDeleteModal({ isOpen: false, homeId: null, homeName: '', isDeleting: false });
     }
   };
 
@@ -217,7 +225,7 @@ const HomeDashboard = () => {
                 <img src={home.image} alt={home.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 <div className="absolute top-3 left-3 z-10">
                   <button
-                    onClick={(e) => handleDeleteHome(e, home.id, home.name)}
+                    onClick={(e) => openDeleteModal(e, home.id, home.name)}
                     className="p-2 bg-red-500/80 hover:bg-red-600 text-white rounded-full backdrop-blur-md shadow-lg transition-transform hover:scale-110"
                     title="Evi Sil"
                   >
@@ -280,6 +288,18 @@ const HomeDashboard = () => {
           ))}
         </div>
       )}
+
+      {/* Modern Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, homeId: null, homeName: '', isDeleting: false })}
+        onConfirm={handleConfirmDeleteHome}
+        title="Lokasyonu Sil"
+        message={`"${deleteModal.homeName}" lokasyonunu ve bağlı cihaz verilerini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+        confirmText="Evet, Lokasyonu Sil"
+        cancelText="Vazgeç"
+        isLoading={deleteModal.isDeleting}
+      />
     </div>
   );
 };

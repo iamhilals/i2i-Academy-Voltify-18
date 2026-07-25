@@ -9,6 +9,7 @@ import {
 import DeviceDetailModal from '../components/DeviceDetailModal';
 import { getDeviceLocalImage } from '../utils/deviceMapping';
 import AddDeviceSlideover from '../components/AddDeviceSlideover';
+import ConfirmModal from '../components/ConfirmModal';
 import { homeService } from '../services/homeService';
 
 const mockHomeData = {
@@ -33,19 +34,26 @@ const HomeDetail = () => {
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
   const [homeState, setHomeState] = useState(null);
   const [appliances, setAppliances] = useState([]);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, applianceId: null, applianceName: '', isDeleting: false });
 
-  const handleDeleteAppliance = async (e, applianceId, applianceName) => {
+  const openDeleteApplianceModal = (e, applianceId, applianceName) => {
     e.stopPropagation();
-    if (window.confirm(`"${applianceName}" cihazını silmek istediğinizden emin misiniz?`)) {
-      try {
-        await homeService.deleteAppliance(id, applianceId);
-        setAppliances(prev => prev.filter(a => a.id !== applianceId));
-        if (selectedDevice && selectedDevice.id === applianceId) {
-          setSelectedDevice(null);
-        }
-      } catch (err) {
-        console.error('Cihaz silinemedi:', err);
+    setDeleteModal({ isOpen: true, applianceId, applianceName, isDeleting: false });
+  };
+
+  const handleConfirmDeleteAppliance = async () => {
+    if (!deleteModal.applianceId) return;
+    setDeleteModal(prev => ({ ...prev, isDeleting: true }));
+    try {
+      await homeService.deleteAppliance(id, deleteModal.applianceId);
+      setAppliances(prev => prev.filter(a => a.id !== deleteModal.applianceId));
+      if (selectedDevice && selectedDevice.id === deleteModal.applianceId) {
+        setSelectedDevice(null);
       }
+    } catch (err) {
+      console.error('Cihaz silinemedi:', err);
+    } finally {
+      setDeleteModal({ isOpen: false, applianceId: null, applianceName: '', isDeleting: false });
     }
   };
   const [homeSamples, setHomeSamples] = useState([]);
@@ -324,7 +332,7 @@ const HomeDetail = () => {
                               <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
                             )}
                             <button
-                              onClick={(e) => handleDeleteAppliance(e, app.id, app.name)}
+                              onClick={(e) => openDeleteApplianceModal(e, app.id, app.name)}
                               className="p-1.5 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
                               title="Cihazı Sil"
                             >
@@ -486,6 +494,18 @@ const HomeDetail = () => {
         }}
         homeId={id}
         roomLayout={home.roomLayout}
+      />
+
+      {/* Modern Confirm Delete Modal for Appliance */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, applianceId: null, applianceName: '', isDeleting: false })}
+        onConfirm={handleConfirmDeleteAppliance}
+        title="Cihazı Sil"
+        message={`"${deleteModal.applianceName}" cihazını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+        confirmText="Evet, Cihazı Sil"
+        cancelText="Vazgeç"
+        isLoading={deleteModal.isDeleting}
       />
     </div>
   );
