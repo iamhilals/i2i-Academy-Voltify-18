@@ -393,15 +393,30 @@ const DashboardLayout = () => {
           <footer className="mt-16 mb-4 py-8 border-t border-gray-200 dark:border-emerald-950/30 text-center">
             <h4 className="text-base font-black text-gray-800 dark:text-white tracking-wide mb-4">Voltify Team</h4>
             <div className="flex items-center justify-center gap-3 flex-wrap mb-4">
-              <span className="px-4 py-2 bg-white dark:bg-[#2A352B] border border-gray-200 dark:border-emerald-950/30 rounded-full text-sm font-bold text-gray-700 dark:text-gray-200 shadow-sm">
+              <a 
+                href="https://www.linkedin.com/in/hilalakg%C3%BCl/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-white dark:bg-[#2A352B] border border-gray-200 dark:border-emerald-950/30 rounded-full text-sm font-bold text-gray-700 dark:text-gray-200 shadow-sm hover:text-[#4C811F] dark:hover:text-emerald-400 hover:border-[#4C811F]/50 transition-all cursor-pointer"
+              >
                 Hilal Ayşe AKGÜL
-              </span>
-              <span className="px-4 py-2 bg-white dark:bg-[#2A352B] border border-gray-200 dark:border-emerald-950/30 rounded-full text-sm font-bold text-gray-700 dark:text-gray-200 shadow-sm">
+              </a>
+              <a 
+                href="https://www.linkedin.com/in/sudenazakta%C5%9F/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-white dark:bg-[#2A352B] border border-gray-200 dark:border-emerald-950/30 rounded-full text-sm font-bold text-gray-700 dark:text-gray-200 shadow-sm hover:text-[#4C811F] dark:hover:text-emerald-400 hover:border-[#4C811F]/50 transition-all cursor-pointer"
+              >
                 Sude Naz AKTAŞ
-              </span>
-              <span className="px-4 py-2 bg-white dark:bg-[#2A352B] border border-gray-200 dark:border-emerald-950/30 rounded-full text-sm font-bold text-gray-700 dark:text-gray-200 shadow-sm">
+              </a>
+              <a 
+                href="https://www.linkedin.com/in/volkan-yuksel57/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-white dark:bg-[#2A352B] border border-gray-200 dark:border-emerald-950/30 rounded-full text-sm font-bold text-gray-700 dark:text-gray-200 shadow-sm hover:text-[#4C811F] dark:hover:text-emerald-400 hover:border-[#4C811F]/50 transition-all cursor-pointer"
+              >
                 Volkan YÜKSEL
-              </span>
+              </a>
             </div>
             <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Developed by the Voltify Team • i2i Academy 2026</p>
           </footer>
