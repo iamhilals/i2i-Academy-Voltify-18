@@ -9,7 +9,7 @@ const mockHomeImages = [
   'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=400&h=300',
   'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&q=80&w=400&h=300',
   'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=400&h=300',
-  'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&q=80&w=400&h=300'
+  'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=400&h=300'
 ];
 
 const HomeDashboard = () => {
@@ -41,7 +41,7 @@ const HomeDashboard = () => {
             status: h.billingLedger && h.billingLedger.isPenaltyActive ? 'Cezai Durum' : 'Aktif',
             health: hasBreached ? 'KRİTİK' : 'MÜKEMMEL',
             healthScore: hasBreached ? 1 : 5,
-            image: mockHomeImages[idx % mockHomeImages.length],
+            image: h.imageUrl || mockHomeImages[idx % mockHomeImages.length],
             isCritical: hasBreached,
             warning: hasBreached ? 'Bütçe veya güç kotası aşıldı!' : null,
             squareMeters: h.squareMeters || 120,
@@ -85,10 +85,6 @@ const HomeDashboard = () => {
           <p className="text-gray-500 dark:text-gray-400 font-medium mt-1">Tüm lokasyonlarınızın enerji durumu</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#1E271F] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-emerald-950/30 rounded-xl hover:bg-gray-50 dark:hover:bg-[#253026] transition-colors font-medium">
-            <Filter className="w-4 h-4" />
-            Filtrele
-          </button>
           <button 
             onClick={() => setIsAddHomeOpen(true)}
             className="flex items-center gap-2 px-5 py-2 bg-[#4C811F] hover:bg-green-700 text-white rounded-xl transition-colors font-bold shadow-lg shadow-green-900/20"

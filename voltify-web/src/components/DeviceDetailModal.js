@@ -2,47 +2,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, AlertTriangle, Zap, Activity, DollarSign, Power } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { homeService } from '../services/homeService';
+import { getDeviceLocalImage } from '../utils/deviceMapping';
 
-// Maps device name/type to a local public PNG image path
-const getDeviceLocalImage = (type, name) => {
-  const lower = (name || '').toLowerCase();
-  const lType = (type || '').toLowerCase();
-  
-  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu')) {
-    return '/fridge.png';
-  }
-  if (lower.includes('klima') || lower.includes(' ac') || lType.includes('iklimlendirme')) {
-    return '/ac.png';
-  }
-  if (lower.includes('fırın') || lower.includes('ocak') || lower.includes('ankastre') || lType.includes('ocak') || lType.includes('fırın') || lower.includes('stove') || lower.includes('oven')) {
-    return '/oven.png';
-  }
-  if (lower.includes('çamaşır') || lower.includes('washer') || lType.includes('çamaşır') || lower.includes('kurutucu') || lower.includes('dryer')) {
-    return '/washer.png';
-  }
-  if (lower.includes('bulaşık') || lower.includes('dishwasher') || lType.includes('bulaşık')) {
-    return '/dishwasher.png';
-  }
-  if (lower.includes('televizyon') || lower.includes(' tv') || lower.startsWith('tv') || (lType.includes('elektronik') && lower.includes('tv'))) {
-    return '/tv.png';
-  }
-  if (lower.includes('konsol') || lower.includes('oyun') || lower.includes('game') || lower.includes('playstation') || lower.includes('xbox')) {
-    return '/console.png';
-  }
-  if (lower.includes('süpürge') || lower.includes('vacuum') || lower.includes('robot')) {
-    return '/vacuum.png';
-  }
-  if (lower.includes('kombi') || lower.includes('ısıtıcı') || lower.includes('boiler')) {
-    return '/boiler.png';
-  }
-  if (lower.includes('priz') || lower.includes('plug')) {
-    return '/plug.png';
-  }
-  if (lower.includes('ampul') || lower.includes('lamba') || lower.includes('bulb') || lower.includes('aydınlatma')) {
-    return '/bulb.png';
-  }
-  return '/plug.png'; // default fallback
-};
+
 
 // Seçilen aralık için grafik verisini GERÇEK ölçümlerden üretir:
 const RANGE_MS = { '1h': 3600e3, '6h': 6 * 3600e3, '24h': 24 * 3600e3 };
@@ -163,11 +125,11 @@ const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice, homeId }) 
         <div className="flex flex-col md:flex-row w-full h-full items-center justify-center gap-6">
           
           {/* Dynamic Image Container matching exact device with local PNGs */}
-          <div className="relative w-[340px] h-full shrink-0 flex items-center justify-center rounded-[2rem] overflow-hidden shadow-2xl border border-white/20">
+          <div className="relative w-[340px] h-full shrink-0 flex items-center justify-center rounded-[2rem] overflow-hidden shadow-2xl border border-white/20 bg-white">
             <img 
               src={getDeviceLocalImage(device.type, device.name)}
               alt={device.name}
-              className={`w-full h-full object-cover transition-all duration-500 ${isOff ? 'grayscale opacity-60' : ''}`}
+              className={`w-full h-full object-contain p-6 transition-all duration-500 ${isOff ? 'grayscale opacity-60' : ''}`}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent" />
             <div className="absolute bottom-6 left-6 right-6">

@@ -65,6 +65,9 @@ public class Home {
     @Column(nullable = true)
     private String roomLayout;
 
+    @Column(columnDefinition = "TEXT", nullable = true)
+    private String imageUrl;
+
     // Getter ve Setter metotları
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -101,4 +104,7 @@ public class Home {
 
     public String getRoomLayout() { return roomLayout; }
     public void setRoomLayout(String roomLayout) { this.roomLayout = roomLayout; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 }

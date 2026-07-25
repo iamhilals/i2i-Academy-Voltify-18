@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
-import { X, Home, Building2, Briefcase, Plus, MapPin, Maximize, Zap, Sparkles } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, Home, Building2, Briefcase, Plus, MapPin, Maximize, Zap, Sparkles, Image as ImageIcon, Upload } from 'lucide-react';
 import { homeService } from '../services/homeService';
+
+const defaultImages = [
+  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=400&h=300',
+  'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&q=80&w=400&h=300',
+  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=400&h=300',
+  'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=400&h=300'
+];
 
 const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
   const [homeName, setHomeName] = useState('');
@@ -9,7 +17,9 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
   const [squareMeters, setSquareMeters] = useState('');
   const [roomLayout, setRoomLayout] = useState('2+1');
   const [hasSmartInfra, setHasSmartInfra] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(defaultImages[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   // Calculate AI prediction based on square meters and type
   const calculateEstimate = () => {
@@ -28,6 +38,43 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setSelectedImage(dataUrl);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -38,6 +85,7 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
         squareMeters: parseInt(squareMeters) || 100,
         type: homeType,
         roomLayout: roomLayout,
+        imageUrl: selectedImage,
       });
       if (typeof onSuccess === 'function') {
         onSuccess();
@@ -54,14 +102,17 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
       setSquareMeters('');
       setRoomLayout('2+1');
       setHasSmartInfra(false);
+      setSelectedImage(defaultImages[0]);
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div 
-        className={`fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-500 z-[60] ${
+        className={`fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-500 z-[100] ${
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={handleOverlayClick}
@@ -69,7 +120,7 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
 
       {/* Slideover Panel */}
       <div 
-        className={`fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] z-[70] flex flex-col ${
+        className={`fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] z-[110] flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -197,6 +248,47 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
               </div>
             </div>
 
+            {/* Ev Görseli (Image Selector) */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Ev Görseli</label>
+              
+              {/* Preview */}
+              <div className="relative w-full h-44 rounded-lg overflow-hidden shadow-sm border border-gray-100 group">
+                <img src={selectedImage} alt="Seçilen ev" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-lg text-white text-xs font-bold flex items-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    Yeni Yükle
+                  </button>
+                </div>
+              </div>
+
+              {/* Default Image Options */}
+              <div className="flex gap-2 items-center">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest shrink-0">veya seç:</span>
+                <div className="flex gap-2 items-center">
+                  {defaultImages.map((imgUrl, i) => (
+                    <button 
+                      key={i} 
+                      type="button" 
+                      onClick={() => setSelectedImage(imgUrl)}
+                      className={`relative w-12 h-8 rounded overflow-hidden shrink-0 transition-transform ${selectedImage === imgUrl ? 'ring-2 ring-[#4C811F] ring-offset-1 scale-105' : 'hover:scale-105 opacity-70 hover:opacity-100'}`}
+                    >
+                      <img src={imgUrl} alt={`Default ${i}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-12 h-8 rounded bg-gray-50 border border-gray-200 border-dashed flex items-center justify-center shrink-0 hover:bg-gray-100 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-gray-400" />
+                  </button>
+                  <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </div>
+              </div>
+            </div>
+
             {/* Akıllı Altyapı Toggle */}
             <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-100 rounded-2xl">
               <div>
@@ -247,7 +339,8 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
         </div>
 
       </div>
-    </>
+    </>,
+    document.body
   );
 };
 

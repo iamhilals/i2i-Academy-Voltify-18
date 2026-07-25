@@ -136,10 +136,10 @@ export default function LoginCard({ isDark, onGoRegister }) {
   };
 
   return (
-    <div className="w-[85vw] max-w-[420px] sm:max-w-[480px] mx-auto flex flex-col items-center pt-10 sm:pt-10 -mt-10">
+    <div className="w-[85vw] max-w-[360px] sm:max-w-[420px] mx-auto flex flex-col items-center pt-8 sm:pt-10 -mt-10">
       {/* KİLİT */}
       <div className="z-30 flex justify-center w-full relative"
-        style={{ marginBottom: '-48px', overflow: 'visible' }}>
+        style={{ marginBottom: '-44px', overflow: 'visible', transform: 'scale(0.9)' }}>
         <Lock3D isUnlocking={isUnlocking} isDark={isDark} />
       </div>
 
@@ -154,13 +154,13 @@ export default function LoginCard({ isDark, onGoRegister }) {
             ? '0 30px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)'
             : '0 30px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9)',
           border: isDark ? '1px solid rgba(123,192,67,0.15)' : '1px solid rgba(100,150,60,0.15)',
-          padding: '5rem 2rem 2rem 2rem',
+          padding: '4rem 1.5rem 1.5rem 1.5rem',
         }}
         animate={isUnlocking ? { scale: 0.98, opacity: 0.8 } : { scale: 1, opacity: 1 }}
         transition={{ duration: 0.4 }}>
 
         {/* Logo + Başlık */}
-        <div className="flex flex-col items-center mb-7">
+        <div className="flex flex-col items-center mb-4">
           <motion.div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl shadow-md flex items-center justify-center mb-3"
             style={{ background: isDark ? 'linear-gradient(135deg,#2D4A2D,#1A2E1A)' : 'linear-gradient(135deg,#E8F5E8,#C8E6C8)' }}
             whileHover={{ rotate: 360, scale: 1.1 }} transition={{ duration: 0.8 }}>
@@ -178,7 +178,7 @@ export default function LoginCard({ isDark, onGoRegister }) {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <FormField label="KULLANICI ADI VEYA E-POSTA" type="text" value={username} onChange={setUsername}
             placeholder="Kullanıcı adı veya e-posta adresi" isDark={isDark} icon="user" />
           <FormField label="ŞİFRE" type="password" value={password} onChange={setPassword}

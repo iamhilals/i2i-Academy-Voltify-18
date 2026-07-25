@@ -75,11 +75,10 @@ function getPasswordStrength(password) {
   if (/[A-Z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
-  if (score <= 1) return { score: 1, label: 'Çok Zayıf', color: '#EF4444' };
-  if (score === 2) return { score: 2, label: 'Zayıf', color: '#F97316' };
-  if (score === 3) return { score: 3, label: 'Orta', color: '#F59E0B' };
-  if (score === 4) return { score: 4, label: 'Güçlü', color: '#84CC16' };
-  return { score: 5, label: 'Çok Güçlü', color: '#22C55E' };
+  if (score <= 1) return { score: 1, label: 'Zayıf', color: '#EF4444' };
+  if (score === 2) return { score: 2, label: 'Orta', color: '#F97316' };
+  if (score === 3) return { score: 3, label: 'Güçlü', color: '#F59E0B' };
+  return { score: 4, label: 'Çok Güçlü', color: '#22C55E' };
 }
 
 function RegField({ label, type, value, onChange, placeholder, isDark, icon }) {
@@ -328,7 +327,7 @@ export default function RegisterCard({ isDark, onGoLogin }) {
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }} className="mt-2">
                   <div className="flex gap-1 mb-1">
-                    {[1, 2, 3, 4, 5].map((level) => (
+                    {[1, 2, 3, 4].map((level) => (
                       <motion.div key={level} className="h-1.5 flex-1 rounded-full"
                         animate={{ background: level <= passwordStrength.score ? passwordStrength.color : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)') }}
                         transition={{ duration: 0.3 }} />

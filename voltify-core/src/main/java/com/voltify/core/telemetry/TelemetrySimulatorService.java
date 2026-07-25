@@ -70,6 +70,10 @@ public class TelemetrySimulatorService {
 
     // TSE / EPDK Standartlarına uygun gerçekçi cihaz güç tüketimi hesaplama
     private double calculateRealisticWatt(Appliance appliance) {
+        if (appliance.getIsOn() != null && !appliance.getIsOn()) {
+            return 0.0;
+        }
+        
         String name = appliance.getName() != null ? appliance.getName().toLowerCase() : "";
         double safeLimit = appliance.getSafePowerLimit() > 0 ? appliance.getSafePowerLimit() : 1500.0;
         

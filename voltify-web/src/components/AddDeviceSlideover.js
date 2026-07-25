@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { X, Zap, Cpu, Save, Search, Sparkles } from 'lucide-react';
 import { homeService } from '../services/homeService';
 
@@ -54,43 +55,25 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
     'Akıllı Priz',
     'Ankastre Fırın',
     'Ankastre Ocak',
-    'Aspiratör / Davlumbaz',
-    'Baskül (Akıllı)',
     'Bilgisayar (Masaüstü)',
     'Bulaşık Makinesi',
     'Buzdolabı',
     'Çamaşır Kurutma Makinesi',
     'Çamaşır Makinesi',
-    'Çay Makinesi',
     'Derin Dondurucu',
     'Dizüstü Bilgisayar (Laptop)',
-    'Ekmek Kızartma Makinesi',
-    'Elektrikli Bisiklet Şarjı',
     'Elektrikli Isıtıcı (Ufo/Radyatör)',
     'Elektrikli Süpürge',
-    'Fritöz (Airfryer)',
     'Fırın (Mini / Midi)',
-    'Güvenlik Kamerası',
-    'Hava Temizleyici',
     'Kahve Makinesi',
     'Klima',
-    'Kombi',
     'Mikrodalga Fırın',
     'Mikser / Blender',
-    'Modem / Router',
-    'Monitör',
-    'Oyun Konsolu (PS/Xbox)',
-    'Projeksiyon Cihazı',
-    'Robot Süpürge',
-    'Saç Kurutma Makinesi',
-    'Ses Sistemi / Ev Sineması',
+    'Oyun Makinesi',
     'Su Isıtıcısı (Kettle)',
-    'Su Sebili',
-    'Şarj İstasyonu (EV)',
     'Televizyon',
     'Tost Makinesi',
-    'Vantilatör',
-    'Ütü'
+    'Vantilatör'
   ]);
 
   // Helper function to estimate category & safe limit based on device name
@@ -232,7 +215,7 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
     }
   };
 
-  return (
+  return ReactDOM.createPortal(
     <>
       {/* Backdrop */}
       <div 
@@ -425,7 +408,8 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 };
 

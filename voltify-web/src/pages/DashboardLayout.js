@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutGrid, Server, BarChart3, Zap, Settings, Brain, Atom, LogOut, Moon, Sun, Bell, CreditCard, Mail } from 'lucide-react';
+import { LayoutGrid, Server, BarChart3, Zap, Settings, Brain, Atom, LogOut, Moon, Sun, Bell, CreditCard, Mail, X } from 'lucide-react';
 import ChatbotSlideover from '../components/ChatbotSlideover';
 import MusicPlayerBar from '../components/MusicPlayerBar';
 import { authService } from '../services/authService';
+import { inboxService } from '../services/inboxService';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const DashboardLayout = () => {
   });
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   const [userProfile, setUserProfile] = useState(() => {
     const user = authService.getCurrentUser();
@@ -53,6 +55,54 @@ const DashboardLayout = () => {
       setShowTooltip(false);
     }, 5000);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Poll notifications from backend every 10 seconds
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const messages = await inboxService.getMessages();
+        
+        const deletedIds = JSON.parse(localStorage.getItem('voltify_deleted_notifs') || '[]');
+        const clearedAt = parseInt(localStorage.getItem('voltify_notifications_cleared_at') || '0', 10);
+
+        const validMessages = messages.filter(msg => {
+          const msgTime = new Date(msg.createdAt).getTime();
+          return msgTime > clearedAt && !deletedIds.includes(msg.id);
+        });
+
+        const mappedMessages = validMessages.map(msg => {
+          let shortMessage = '';
+          if (msg.category === 'ANOMALY_DETECTED') {
+            shortMessage = `${msg.homeName} evinizde normal dışı yüksek tüketim (anomali) tespit edildi.`;
+          } else if (msg.category === 'BREACH_100') {
+            shortMessage = `${msg.homeName} kotasını tamamen aştı! Ceza tarifesi devrede.`;
+          } else if (msg.category === 'BREACH_80') {
+            shortMessage = `${msg.homeName} güvenli limitinin %80'ine ulaştı.`;
+          } else {
+            shortMessage = 'Yeni bir Voltify AI uyarısı aldınız.';
+          }
+
+          return {
+            id: msg.id,
+            title: msg.category === 'ANOMALY_DETECTED' ? 'Cihaz Anomalisi' : 
+                   msg.category === 'BREACH_100' ? 'Kota Aşıldı!' : 
+                   msg.category === 'BREACH_80' ? 'Kritik Seviye (%80)' : 'Voltify AI Uyarısı',
+            message: shortMessage,
+            time: new Date(msg.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+            color: msg.category === 'ANOMALY_DETECTED' ? 'bg-orange-100 text-orange-600' : 'bg-red-100 text-red-600',
+            dotColor: msg.category === 'ANOMALY_DETECTED' ? 'bg-orange-500' : 'bg-red-500'
+          };
+        });
+        setNotifications(mappedMessages);
+      } catch (err) {
+        console.warn('Failed to fetch notifications:', err);
+      }
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -234,7 +284,9 @@ const DashboardLayout = () => {
               >
                 <Bell className={`w-5 h-5 ${showNotifications ? 'fill-gray-900 text-gray-900' : ''}`} />
                 {/* Notification Badge */}
-                <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+                {notifications.length > 0 && (
+                  <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+                )}
               </button>
 
               {/* Backdrop Overlay when dropdown is open */}
@@ -247,46 +299,51 @@ const DashboardLayout = () => {
                 <div className="absolute top-14 right-0 w-80 sm:w-96 bg-white dark:bg-[#1E271F] rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-emerald-950/30 z-[100] overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
                   <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <h3 className="font-bold text-gray-900 text-sm">Bildirimler</h3>
-                    <span className="text-xs font-bold text-[#4C811F] bg-green-100 px-2 py-0.5 rounded-full">3 Yeni</span>
+                    {notifications.length > 0 && (
+                      <span className="text-xs font-bold text-[#4C811F] bg-green-100 px-2 py-0.5 rounded-full">{notifications.length} Yeni</span>
+                    )}
                   </div>
                   <div className="max-h-[300px] overflow-y-auto">
-                    {/* Item 1 */}
-                    <div className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer flex gap-3 items-start">
-                      <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
-                        <div className="w-2 h-2 rounded-full bg-red-600"></div>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-gray-900 mb-0.5">Buzdolabı Uyarısı!</h4>
-                        <p className="text-xs text-gray-500 font-medium">Mutfaktaki buzdolabının kapağı 5 dakikadır açık. Soğutma kaybı yaşanıyor.</p>
-                        <span className="text-[10px] font-bold text-gray-400 mt-2 block">Şimdi</span>
-                      </div>
-                    </div>
-                    {/* Item 2 */}
-                    <div className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer flex gap-3 items-start">
-                      <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center shrink-0 mt-0.5">
-                        <div className="w-2 h-2 rounded-full bg-yellow-600"></div>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-gray-900 mb-0.5">Bütçe Limiti</h4>
-                        <p className="text-xs text-gray-500 font-medium">Günlük enerji bütçenizin %80'ine ulaştınız. Otomasyonlar devreye giriyor.</p>
-                        <span className="text-[10px] font-bold text-gray-400 mt-2 block">1 saat önce</span>
-                      </div>
-                    </div>
-                    {/* Item 3 */}
-                    <div className="p-4 hover:bg-gray-50 transition-colors cursor-pointer flex gap-3 items-start">
-                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
-                        <Zap className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-gray-900 mb-0.5">Program Tamamlandı</h4>
-                        <p className="text-xs text-gray-500 font-medium">Çamaşır makinesi Eco-Mod programını bitirdi. Beklemeye alındı.</p>
-                        <span className="text-[10px] font-bold text-gray-400 mt-2 block">3 saat önce</span>
-                      </div>
-                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-gray-500 text-sm font-medium">Yeni bildirim yok</div>
+                    ) : (
+                      notifications.map(notif => (
+                        <div key={notif.id} className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors flex gap-3 items-start group relative">
+                          <div className={`w-8 h-8 rounded-full ${notif.color} flex items-center justify-center shrink-0 mt-0.5`}>
+                            {notif.icon || <div className={`w-2 h-2 rounded-full ${notif.dotColor}`}></div>}
+                          </div>
+                          <div className="flex-1 pr-6">
+                            <h4 className="text-sm font-bold text-gray-900 mb-0.5">{notif.title}</h4>
+                            <p className="text-xs text-gray-500 font-medium">{notif.message}</p>
+                            <span className="text-[10px] font-bold text-gray-400 mt-2 block">{notif.time}</span>
+                          </div>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const deletedIds = JSON.parse(localStorage.getItem('voltify_deleted_notifs') || '[]');
+                              deletedIds.push(notif.id);
+                              localStorage.setItem('voltify_deleted_notifs', JSON.stringify(deletedIds));
+                              setNotifications(notifications.filter(n => n.id !== notif.id));
+                            }}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Bildirimi Sil"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))
+                    )}
                   </div>
-                  <div className="p-3 border-t border-gray-100 bg-gray-50/50 text-center cursor-pointer hover:bg-gray-100 transition-colors">
-                    <span className="text-xs font-bold text-gray-600">Tümünü Okundu İşaretle</span>
-                  </div>
+                  {notifications.length > 0 && (
+                    <div 
+                      onClick={() => {
+                        localStorage.setItem('voltify_notifications_cleared_at', Date.now().toString());
+                        setNotifications([]);
+                      }}
+                      className="p-3 border-t border-gray-100 bg-gray-50/50 text-center cursor-pointer hover:bg-gray-100 transition-colors">
+                      <span className="text-xs font-bold text-gray-600">Tümünü Sil</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -367,8 +424,8 @@ const DashboardLayout = () => {
         {/* AI Chatbot Button */}
         <div className="absolute bottom-8 right-8 z-50 flex flex-col items-end">
           {/* Tooltip */}
-          <div className={`mb-4 bg-white rounded-2xl p-4 shadow-xl border border-gray-100 max-w-[250px] transition-all duration-500 origin-bottom-right ${showTooltip ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4 pointer-events-none'}`}>
-            <p className="text-sm text-gray-700 font-medium leading-relaxed">
+          <div className={`mb-4 bg-white dark:bg-[#1E271F] rounded-2xl p-4 shadow-xl border border-gray-100 dark:border-emerald-950/30 max-w-[250px] transition-all duration-500 origin-bottom-right ${showTooltip ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4 pointer-events-none'}`}>
+            <p className="text-sm text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
               Merhaba! Ben Volty. Kişisel asistanınızım <span role="img" aria-label="wave">👋</span>
             </p>
           </div>

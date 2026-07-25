@@ -34,9 +34,15 @@ public class Appliance {
     private String room;
     private String type;
 
+    @Column(columnDefinition = "boolean default true")
+    private Boolean isOn = true;
+
     // Getter ve Setter metotları
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Boolean getIsOn() { return isOn; }
+    public void setIsOn(Boolean isOn) { this.isOn = isOn; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

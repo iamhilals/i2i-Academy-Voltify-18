@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Sky, OrbitControls, Html, useKeyboardControls, KeyboardControls, useGLTF } from '@react-three/drei';
+import { Sky, OrbitControls, Html, useKeyboardControls, KeyboardControls, useGLTF, PointerLockControls } from '@react-three/drei';
 import { TransformControls } from '@react-three/drei/core/TransformControls';
 import * as THREE from 'three';
 import { ArrowLeft, Zap } from 'lucide-react';
@@ -9,47 +9,30 @@ import { useNavigate, useLocation } from 'react-router-dom';
 // ===== GLB Device config: maps device name/type to a public .glb file =====
 const getDeviceGLBConfig = (type, name) => {
   const lower = (name || '').toLowerCase();
-  const lType = (type || '').toLowerCase();
-  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu'))
-    return { path: '/freezer.glb', targetHeight: 1.8 };
-  if (lower.includes('klima') || lower.includes(' ac') || lType.includes('iklimlendirme'))
-    return { path: '/ac.glb', targetHeight: 1.8, posY: 2.2 }; // Scaled up to 1.8 units wide, mounted high on wall!
-  if ((lower.includes('çamaşır') || lower.includes('washer')) && !lower.includes('bulaşık'))
-    return { path: '/washer.glb', targetHeight: 0.85 }; // Scaled down to natural machine size
-  if (lower.includes('kurutucu') || lower.includes('kurutma') || lower.includes('dryer'))
-    return { path: '/dryer.glb', targetHeight: 0.85 }; // Scaled down to natural dryer size
-  if (lower.includes('televizyon') || lower.includes(' tv') || lower.startsWith('tv'))
-    return { path: '/tv.glb', targetHeight: 1.6, posY: 1.2 }; // Scaled up to look like widescreen smart TV!
-  if (lower.includes('konsol') || lower.includes('oyun konsolu'))
-    return { path: '/console.glb', targetHeight: 0.3, posY: 0.15 };
-  if (lower.includes('süpürge'))
-    return { path: '/vacuum.glb', targetHeight: 1.0 };
-  if (lower.includes('laptop') || lower.includes('dizüstü'))
-    return { path: '/laptop.glb', targetHeight: 0.55, posY: 0.5 };
-  if (lower.includes('masaüstü') || lower.includes('desktop'))
-    return { path: '/desktop.glb', targetHeight: 1.0 };
-  if (lower.includes('ısıtıcı') && !lower.includes('su'))
-    return { path: '/heater.glb', targetHeight: 1.2 };
-  if (lower.includes('fan') || lower.includes('vantilatör'))
-    return { path: '/fan.glb', targetHeight: 1.0 };
-  if (lower.includes('kettle') || lower.includes('su ısıtıcı') || lower.includes('ibrik'))
-    return { path: '/kettle.glb', targetHeight: 0.3, posY: 0.15 }; // Balanced size
-  if (lower.includes('mikrodalga') || lower.includes('microwave'))
-    return { path: '/microwave.glb', targetHeight: 0.55, posY: 0.3 };
-  if (lower.includes('kahve') || lower.includes('espresso'))
-    return { path: '/coffee_maker.glb', targetHeight: 0.45, posY: 0.25 }; // Balanced size
-  if (lower.includes('blender'))
-    return { path: '/blender.glb', targetHeight: 0.5, posY: 0.25 };
-  if (lower.includes('panini') || lower.includes('tost makinesi'))
-    return { path: '/panini.glb', targetHeight: 0.3, posY: 0.15 };
-  if (lower.includes('ampul') || lower.includes('akıllı lamba'))
-    return { path: '/smart_bulb.glb', targetHeight: 0.35, posY: 1.0 };
-  if (lower.includes('priz'))
-    return { path: '/smart_plug.glb', targetHeight: 0.35, posY: 0.1 };
-  if (lower.includes('ocak') || lower.includes('fırın'))
-    return { path: '/stove.glb', targetHeight: 0.95 }; // Balanced stove size
-  if (lower.includes('bulaşık'))
-    return { path: '/dishwasher.glb', targetHeight: 0.85 }; // Scaled down to natural dishwasher size
+  
+  if (lower.includes('akıllı ampul')) return { path: '/smart_bulb.glb', targetHeight: 0.35, posY: 1.0 };
+  if (lower.includes('akıllı priz')) return { path: '/smart_plug.glb', targetHeight: 0.35, posY: 0.1 };
+  if (lower.includes('ankastre fırın')) return { path: '/oven.glb', targetHeight: 0.95 };
+  if (lower.includes('ankastre ocak')) return { path: '/stove.glb', targetHeight: 0.95 };
+  if (lower.includes('masaüstü') || lower.includes('bilgisayar (masaüstü)')) return { path: '/desktop.glb', targetHeight: 1.0 };
+  if (lower.includes('bulaşık makinesi')) return { path: '/dishwasher.glb', targetHeight: 0.85 };
+  if (lower.includes('buzdolabı')) return { path: '/fridge.glb', targetHeight: 1.8 };
+  if (lower.includes('çamaşır kurutma makinesi')) return { path: '/dryer.glb', targetHeight: 0.85 };
+  if (lower.includes('çamaşır makinesi')) return { path: '/washer.glb', targetHeight: 0.85 };
+  if (lower.includes('derin dondurucu')) return { path: '/freezer.glb', targetHeight: 1.8 };
+  if (lower.includes('laptop') || lower.includes('dizüstü bilgisayar')) return { path: '/laptop.glb', targetHeight: 0.55, posY: 0.5 };
+  if (lower.includes('radyatör') || lower.includes('ufo') || lower.includes('elektrikli ısıtıcı')) return { path: '/heater.glb', targetHeight: 1.2 };
+  if (lower.includes('elektrikli süpürge')) return { path: '/vacuum.glb', targetHeight: 1.0 };
+  if (lower.includes('fırın (mini') || lower.includes('mikrodalga fırın')) return { path: '/microwave.glb', targetHeight: 0.55, posY: 0.3 };
+  if (lower.includes('kahve makinesi')) return { path: '/coffee_maker.glb', targetHeight: 0.45, posY: 0.25 };
+  if (lower.includes('klima')) return { path: '/ac.glb', targetHeight: 1.8, posY: 2.2 };
+  if (lower.includes('mikser') || lower.includes('blender')) return { path: '/blender.glb', targetHeight: 0.5, posY: 0.25 };
+  if (lower.includes('oyun makinesi')) return { path: '/console.glb', targetHeight: 0.3, posY: 0.15 };
+  if (lower.includes('su ısıtıcısı') || lower.includes('kettle')) return { path: '/kettle.glb', targetHeight: 0.3, posY: 0.15 };
+  if (lower.includes('televizyon')) return { path: '/tv.glb', targetHeight: 1.6, posY: 1.2 };
+  if (lower.includes('tost makinesi')) return { path: '/panini.glb', targetHeight: 0.3, posY: 0.15 };
+  if (lower.includes('vantilatör')) return { path: '/fan.glb', targetHeight: 1.0 };
+
   return null;
 };
 
@@ -73,7 +56,7 @@ const GLBDeviceModel = ({ path, targetHeight = 1.5, posY = 0 }) => {
 };
 
 // Device Component
-const InteractiveDevice = ({ deviceId, isActive, onDoubleClick, setOrbitEnabled, position, name, type, status, wattage, color, playerRef, rotationY = 0, onPositionChange, onToggleActive, onRepair }) => {
+const InteractiveDevice = ({ deviceId, isActive, onDoubleClick, setOrbitEnabled, position, name, type, status, wattage, color, playerRef, rotationY = 0, onPositionChange, onToggleActive, onRepair, scaleMultiplier = 1.0, onScaleChange }) => {
   const meshRef = useRef();
   const transformRef = useRef();
   const [showTooltip, setShowTooltip] = useState(false);
@@ -570,6 +553,7 @@ const InteractiveDevice = ({ deviceId, isActive, onDoubleClick, setOrbitEnabled,
       ref={meshRef} 
       position={position} 
       rotation={[0, rotationY, 0]}
+      scale={scaleMultiplier}
       onDoubleClick={(e) => {
         e.stopPropagation();
         if (onDoubleClick) onDoubleClick();
@@ -578,35 +562,56 @@ const InteractiveDevice = ({ deviceId, isActive, onDoubleClick, setOrbitEnabled,
       {renderDevice3DShape()}
       
       {showTooltip && (
-        <Html position={[0, 1.8, 0]} center>
-          <div className="bg-white/90 backdrop-blur-md px-4 py-3 rounded-2xl shadow-2xl border border-gray-100 flex flex-col gap-2 min-w-[170px] animate-in zoom-in-75 duration-200">
-            <h3 className="font-bold text-gray-900 text-sm">{name}</h3>
-            <div className="flex items-center gap-3">
-              <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
+        <Html position={[0, 1.2, 0]} center>
+          <div className="transform translate-x-[70%] -translate-y-[70%] bg-white/90 backdrop-blur-md px-3 py-2 rounded-md shadow-2xl border border-gray-100 flex flex-col gap-1.5 min-w-[130px] animate-in zoom-in-75 duration-200">
+            <h3 className="font-bold text-gray-900 text-xs">{name}</h3>
+            <div className="flex items-center gap-2">
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
                 status.includes('Ertelendi') 
                   ? 'bg-amber-100 text-amber-700 animate-pulse' 
                   : (status === 'Hata' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
               }`}>
                 {status}
               </span>
-              <span className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                <Zap className="w-3 h-3" /> {wattage}
+              <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1">
+                <Zap className="w-2.5 h-2.5" /> {wattage}
               </span>
             </div>
             
-            <div className="flex flex-col gap-1.5 mt-1">
+            <div className="flex flex-col gap-1 mt-1">
               {isActive ? (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onDoubleClick) onDoubleClick();
-                  }}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold py-1 rounded-lg transition-colors animate-pulse"
-                >
-                  Konumu Kilitle
-                </button>
+                <>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onDoubleClick) onDoubleClick();
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-bold py-1 rounded transition-colors animate-pulse"
+                  >
+                    Konumu Kilitle
+                  </button>
+                  {onScaleChange && (
+                    <div className="mt-1 pt-1.5 border-t border-gray-200">
+                      <label className="text-[9px] font-bold text-gray-500 mb-0.5 block">Boyut: %{Math.round(scaleMultiplier * 100)}</label>
+                      <input 
+                        type="range" 
+                        min="0.5" 
+                        max="3.0" 
+                        step="0.1" 
+                        value={scaleMultiplier} 
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          onScaleChange(parseFloat(e.target.value));
+                        }}
+                        onPointerDown={(e) => { e.stopPropagation(); setOrbitEnabled(false); }}
+                        onPointerUp={(e) => { e.stopPropagation(); setOrbitEnabled(true); }}
+                        className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      />
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="text-[9px] text-gray-500 text-center font-bold bg-blue-50/50 text-blue-700 py-1.5 rounded border border-dashed border-blue-200">
+                <div className="text-[8px] text-gray-500 text-center font-bold bg-blue-50/50 text-blue-700 py-1 rounded border border-dashed border-blue-200">
                   Taşımak için çift tıkla
                 </div>
               )}
@@ -656,15 +661,29 @@ const InteractiveDevice = ({ deviceId, isActive, onDoubleClick, setOrbitEnabled,
   );
 };
 
-// Camera Controller to follow player but allow 360 mouse rotation
-const CameraController = ({ playerRef, enabled = true }) => {
+// Camera Controller to follow player but allow 360 mouse rotation or FPS mode
+const CameraController = ({ playerRef, cameraMode, enabled = true }) => {
   const controlsRef = useRef();
-  useFrame(() => {
-    if (controlsRef.current && playerRef.current) {
+  useFrame((state) => {
+    if (controlsRef.current && playerRef.current && cameraMode !== 'fps') {
       controlsRef.current.target.lerp(playerRef.current.position, 0.1);
       controlsRef.current.update();
     }
+    
+    if (cameraMode === 'fps' && playerRef.current) {
+      // Pin camera to player's head height
+      state.camera.position.set(
+        playerRef.current.position.x,
+        playerRef.current.position.y + 1.6,
+        playerRef.current.position.z
+      );
+    }
   });
+
+  if (cameraMode === 'fps') {
+    return <PointerLockControls makeDefault />;
+  }
+
   return (
     <OrbitControls 
       ref={controlsRef} 
@@ -2488,7 +2507,7 @@ const RoomLabels = ({ layout, size }) => {
 };
 
 // Advanced Multi-Character Player Component (Robot, Man, Woman, Child) with sliding AABB wall collision detection
-const Player = ({ playerRef, characterType = 'robot', initialPosition = [0, 0.5, 0], roomLayout = '2+1', floorSize = 18 }) => {
+const Player = ({ playerRef, characterType = 'robot', initialPosition = [0, 0.5, 0], roomLayout = '2+1', floorSize = 18, cameraMode = 'orbit' }) => {
   const [, get] = useKeyboardControls();
   const speed = 5.5;
 
@@ -3000,7 +3019,7 @@ const Player = ({ playerRef, characterType = 'robot', initialPosition = [0, 0.5,
   );
 
   return (
-    <group ref={playerRef} position={initialPosition}>
+    <group ref={playerRef} position={initialPosition} visible={cameraMode !== 'fps'}>
       {characterType === 'robot' && renderRobot()}
       {characterType === 'man' && renderMan()}
       {characterType === 'woman' && renderWoman()}
@@ -3124,12 +3143,12 @@ const MetaHome = () => {
     // Layout: 1+0 (Studio)
     if (layout === '1+0') {
       const positions = [
-        [-(half - offset), 0.5, -(half - offset)],
-        [(half - offset), 0.5, -(half - offset)],
-        [-(half - offset), 0.5, (half - offset)],
-        [(half - offset), 0.5, (half - offset)],
-        [-(half - offset), 0.5, 0],
-        [(half - offset), 0.5, 0]
+        [-(half - offset), 0.0, -(half - offset)],
+        [(half - offset), 0.0, -(half - offset)],
+        [-(half - offset), 0.0, (half - offset)],
+        [(half - offset), 0.0, (half - offset)],
+        [-(half - offset), 0.0, 0],
+        [(half - offset), 0.0, 0]
       ];
       return positions[index % positions.length];
     }
@@ -3139,19 +3158,19 @@ const MetaHome = () => {
       if (rName.includes('yatak')) {
         // Yatak Odası (X > 0)
         const positions = [
-          [(half - offset), 0.5, -(half - offset)],
-          [2, 0.5, -(half - offset)],
-          [(half - offset), 0.5, (half - offset)],
-          [2, 0.5, (half - offset)]
+          [(half - offset), 0.0, -(half - offset)],
+          [2, 0.0, -(half - offset)],
+          [(half - offset), 0.0, (half - offset)],
+          [2, 0.0, (half - offset)]
         ];
         return positions[index % positions.length];
       } else {
         // Salon (X < 0)
         const positions = [
-          [-(half - offset), 0.5, -(half - offset)],
-          [-2, 0.5, -(half - offset)],
-          [-(half - offset), 0.5, (half - offset)],
-          [-2, 0.5, (half - offset)]
+          [-(half - offset), 0.0, -(half - offset)],
+          [-2, 0.0, -(half - offset)],
+          [-(half - offset), 0.0, (half - offset)],
+          [-2, 0.0, (half - offset)]
         ];
         return positions[index % positions.length];
       }
@@ -3162,26 +3181,26 @@ const MetaHome = () => {
       if (rName.includes('ana yatak') || rName.includes('yatak odası')) {
         // Ana Yatak Odası (X > 0, Z < 0)
         const positions = [
-          [(half - offset), 0.5, -(half - offset)],
-          [2, 0.5, -(half - offset)],
-          [(half - offset), 0.5, -2]
+          [(half - offset), 0.0, -(half - offset)],
+          [2, 0.0, -(half - offset)],
+          [(half - offset), 0.0, -2]
         ];
         return positions[index % positions.length];
       } else if (rName.includes('çocuk')) {
         // Çocuk Odası (X > 0, Z > 0)
         const positions = [
-          [(half - offset), 0.5, (half - offset)],
-          [2, 0.5, (half - offset)],
-          [(half - offset), 0.5, 2]
+          [(half - offset), 0.0, (half - offset)],
+          [2, 0.0, (half - offset)],
+          [(half - offset), 0.0, 2]
         ];
         return positions[index % positions.length];
       } else {
         // Salon (X < 0)
         const positions = [
-          [-(half - offset), 0.5, -(half - offset)],
-          [-2, 0.5, -(half - offset)],
-          [-(half - offset), 0.5, (half - offset)],
-          [-2, 0.5, (half - offset)]
+          [-(half - offset), 0.0, -(half - offset)],
+          [-2, 0.0, -(half - offset)],
+          [-(half - offset), 0.0, (half - offset)],
+          [-2, 0.0, (half - offset)]
         ];
         return positions[index % positions.length];
       }
@@ -3225,10 +3244,12 @@ const MetaHome = () => {
   };
 
   const [devicePositionsMap, setDevicePositionsMap] = useState({});
+  const [deviceScalesMap, setDeviceScalesMap] = useState({});
   const [selectedTransformId, setSelectedTransformId] = useState(null);
   const [orbitEnabled, setOrbitEnabled] = useState(true);
   const [characterType, setCharacterType] = useState('robot');
   const [lightingMode, setLightingMode] = useState('dim');
+  const [cameraMode, setCameraMode] = useState('orbit');
 
   // 1. Virtual Clock Interval (1 minute = 1 hour simulation tick)
   useEffect(() => {
@@ -3493,9 +3514,13 @@ const MetaHome = () => {
   useEffect(() => {
     // Load persisted positions from localStorage first
     let saved = {};
+    let savedScales = {};
     try {
       saved = JSON.parse(localStorage.getItem('voltify_device_positions') || '{}');
+      savedScales = JSON.parse(localStorage.getItem('voltify_device_scales') || '{}');
     } catch(e) {}
+    setDeviceScalesMap(savedScales);
+
 
     // Initialize position mapping: use saved if exists, otherwise calculate default
     setDevicePositionsMap(prev => {
@@ -3536,6 +3561,27 @@ const MetaHome = () => {
           </p>
         </div>
       </div>
+
+      {/* Camera Mode Toggle Button */}
+      <button 
+        onClick={() => setCameraMode(prev => prev === 'orbit' ? 'fps' : 'orbit')}
+        className="absolute bottom-6 left-6 z-20 bg-slate-900/90 hover:bg-slate-800 text-white px-5 py-3 rounded-2xl shadow-2xl backdrop-blur font-bold flex items-center gap-2 border border-white/10 transition-all"
+      >
+        {cameraMode === 'orbit' ? 'FPS Moduna Geç (Karakter Gözü)' : 'Kuşbakışı Moduna Dön'}
+      </button>
+
+      {/* Crosshair when in FPS mode */}
+      {cameraMode === 'fps' && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white rounded-full z-10 pointer-events-none mix-blend-difference" />
+      )}
+
+      {/* Keyboard guide for FPS */}
+      {cameraMode === 'fps' && (
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 bg-slate-900/80 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-xl border border-white/10 pointer-events-none text-center shadow-xl">
+          W A S D tuşlarıyla yürü. Fareyle etrafa bak.<br />
+          İmleci serbest bırakmak için ESC'ye bas.
+        </div>
+      )}
       
       {/* Character Selector Overlay */}
       <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-lg flex items-center gap-2">
@@ -3947,7 +3993,7 @@ const MetaHome = () => {
       {/* 3D Canvas */}
       <KeyboardControls map={keyboardMap}>
         <Canvas shadows camera={{ position: [0, 10, 10], fov: 50 }}>
-          <CameraController playerRef={playerRef} enabled={orbitEnabled} />
+          <CameraController playerRef={playerRef} enabled={orbitEnabled} cameraMode={cameraMode} />
           <Sky 
             sunPosition={weather === 'sunny' ? [100, 20, 100] : (weather === 'cloudy' ? [30, 8, 30] : [0, -10, 0])} 
             turbidity={weather === 'sunny' ? 0.1 : (weather === 'cloudy' ? 8 : 10)} 
@@ -4361,15 +4407,17 @@ const MetaHome = () => {
           <Player 
             playerRef={playerRef} 
             characterType={characterType} 
-            initialPosition={[salonX, 0.5, 0]} 
+            initialPosition={[salonX, 0.0, 0]} 
             roomLayout={roomLayout} 
             floorSize={floorSize} 
+            cameraMode={cameraMode}
           />
 
           {/* Dynamic Devices based on specific Home data */}
           {localDevices.map((device, index) => {
             const key = String(device.id);
             const pos = devicePositionsMap[key] || getDevicePosition(device, roomLayout, floorSize, index);
+            const scale = deviceScalesMap[key] || 1.0;
             
             return (
               <InteractiveDevice 
@@ -4385,6 +4433,15 @@ const MetaHome = () => {
                 status={scheduledDevices[device.id] ? "Ertelendi (Saat 22:00)" : (device.isAnomalous ? "Hata" : "Açık")} 
                 wattage={`${device.currentWattage}W`} 
                 color={getDeviceColor(device.type)}
+                scaleMultiplier={scale}
+                onScaleChange={(newScale) => {
+                  setDeviceScalesMap(prev => ({ ...prev, [key]: newScale }));
+                  try {
+                    const saved = JSON.parse(localStorage.getItem('voltify_device_scales') || '{}');
+                    saved[key] = newScale;
+                    localStorage.setItem('voltify_device_scales', JSON.stringify(saved));
+                  } catch(e) {}
+                }}
                 onPositionChange={(newPos) => {
                   setDevicePositionsMap(prev => ({ ...prev, [key]: newPos }));
                   try {
@@ -4416,6 +4473,15 @@ const MetaHome = () => {
                 status="Açık" 
                 wattage="120W" 
                 color="#0ea5e9"
+                scaleMultiplier={deviceScalesMap['999'] || 1.0}
+                onScaleChange={(newScale) => {
+                  setDeviceScalesMap(prev => ({ ...prev, '999': newScale }));
+                  try {
+                    const saved = JSON.parse(localStorage.getItem('voltify_device_scales') || '{}');
+                    saved['999'] = newScale;
+                    localStorage.setItem('voltify_device_scales', JSON.stringify(saved));
+                  } catch(e) {}
+                }}
                 onPositionChange={(newPos) => {
                   setDevicePositionsMap(prev => ({ ...prev, '999': newPos }));
                   try {

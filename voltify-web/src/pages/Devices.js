@@ -1,47 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Activity, AlertTriangle, Power, Zap, MapPin, Search } from 'lucide-react';
 import { homeService } from '../services/homeService';
-
-// Maps device name/type to a local public PNG image path
-const getDeviceLocalImage = (type, name) => {
-  const lower = (name || '').toLowerCase();
-  const lType = (type || '').toLowerCase();
-  
-  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu')) {
-    return '/fridge.png';
-  }
-  if (lower.includes('klima') || lower.includes(' ac') || lType.includes('iklimlendirme')) {
-    return '/ac.png';
-  }
-  if (lower.includes('fırın') || lower.includes('ocak') || lower.includes('ankastre') || lType.includes('ocak') || lType.includes('fırın') || lower.includes('stove') || lower.includes('oven')) {
-    return '/oven.png';
-  }
-  if (lower.includes('çamaşır') || lower.includes('washer') || lType.includes('çamaşır') || lower.includes('kurutucu') || lower.includes('dryer')) {
-    return '/washer.png';
-  }
-  if (lower.includes('bulaşık') || lower.includes('dishwasher') || lType.includes('bulaşık')) {
-    return '/dishwasher.png';
-  }
-  if (lower.includes('televizyon') || lower.includes(' tv') || lower.startsWith('tv') || (lType.includes('elektronik') && lower.includes('tv'))) {
-    return '/tv.png';
-  }
-  if (lower.includes('konsol') || lower.includes('oyun') || lower.includes('game') || lower.includes('playstation') || lower.includes('xbox')) {
-    return '/console.png';
-  }
-  if (lower.includes('süpürge') || lower.includes('vacuum') || lower.includes('robot')) {
-    return '/vacuum.png';
-  }
-  if (lower.includes('kombi') || lower.includes('ısıtıcı') || lower.includes('boiler')) {
-    return '/boiler.png';
-  }
-  if (lower.includes('priz') || lower.includes('plug')) {
-    return '/plug.png';
-  }
-  if (lower.includes('ampul') || lower.includes('lamba') || lower.includes('bulb') || lower.includes('aydınlatma')) {
-    return '/bulb.png';
-  }
-  return '/plug.png'; // default fallback to plug/kombi image
-};
+import { getDeviceLocalImage } from '../utils/deviceMapping';
 
 // Returns a display emoji for device type for non-image fallback
 const getDeviceEmoji = (type, name) => {
@@ -87,10 +47,8 @@ const Devices = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [devices, setDevices] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   const loadDevices = async () => {
-    setIsLoading(true);
     try {
       const homes = await homeService.getMyHomes();
       if (Array.isArray(homes) && homes.length > 0) {
@@ -104,8 +62,8 @@ const Devices = () => {
                 name: a.name,
                 type: a.type || 'Elektronik',
                 location: `${h.name} - ${a.room || 'Salon'}`,
-                currentWattage: a.currentWattage || 0,
-                status: a.currentWattage > 0 ? 'active' : 'standby',
+                currentWattage: a.currentWattage !== undefined ? a.currentWattage : 150,
+                status: (a.currentWattage !== undefined ? a.currentWattage : 150) > 0 ? 'active' : 'standby',
                 isAnomalous: a.isAnomalous || false,
                 image: a.image || 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?auto=format&fit=crop&q=80&w=150&h=150'
               });
@@ -119,8 +77,6 @@ const Devices = () => {
     } catch (err) {
       console.warn('Could not load user devices from backend:', err);
       setDevices([]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -145,7 +101,9 @@ const Devices = () => {
     try {
       if (targetDev.homeId && targetDev.id) {
         await homeService.updateAppliance(targetDev.homeId, targetDev.id, {
-          name: targetDev.name
+          name: targetDev.name,
+          currentWattage: nextWattage,
+          isOn: nextStatus === 'active'
         });
       }
     } catch (err) {

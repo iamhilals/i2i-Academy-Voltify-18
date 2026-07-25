@@ -1,19 +1,63 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Brain, Send, Mic, Sparkles, MoreHorizontal, User } from 'lucide-react';
+import { X, Brain, Send, Mic, Sparkles, MoreHorizontal, User, Trash2 } from 'lucide-react';
 import { aiService } from '../services/aiService';
 
 const mockChatHistory = [
-  { id: 1, sender: 'volty', text: 'Merhaba Baş Stratejist! Ben Volty ⚡ Bugün enerji verimliliğinde harika gidiyorsun. Nasıl yardımcı olabilirim?', time: '09:41' },
-  { id: 2, sender: 'user', text: 'Bu ayki faturamın geçen aya göre neden yüksek geldiğini analiz edebilir misin?', time: '09:45' },
-  { id: 3, sender: 'volty', text: 'Hemen inceliyorum... Verilere göre bu artışın %80i İklimlendirme (Klima) kullanımından kaynaklanıyor. Geçen pazar klimanızı aralıksız 12 saat çalıştırdığınızı tespit ettim.', time: '09:45' },
-  { id: 4, sender: 'volty', text: 'Sizin için hafta sonu klima kullanımlarına otomatik bir "Eco Mod" limiti koymamı ister misiniz? Bu sayede ayda ortalama ₺140 tasarruf edebilirsiniz.', time: '09:46', isActionable: true },
+  { id: 1, sender: 'volty', text: 'Merhaba! Ben Volty ⚡ Akıllı enerji asistanınızım. Size nasıl yardımcı olabilirim?' }
 ];
 
 const ChatbotSlideover = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState(mockChatHistory);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.lang = 'tr-TR';
+      recognition.interimResults = false;
+      
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInputText(prev => prev + (prev ? ' ' : '') + transcript);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert("Tarayıcınız ses tanıma özelliğini desteklemiyor. Lütfen Chrome kullanın.");
+      return;
+    }
+    
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -77,7 +121,7 @@ const ChatbotSlideover = ({ isOpen, onClose }) => {
 
       {/* Slideover Panel */}
       <div 
-        className={`fixed top-0 right-0 h-full w-full sm:w-[400px] md:w-[450px] bg-white shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] z-[70] flex flex-col ${
+        className={`fixed top-0 right-0 h-full w-full sm:w-[400px] md:w-[450px] bg-white dark:bg-[#181F19] shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] z-[70] flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -100,19 +144,30 @@ const ChatbotSlideover = ({ isOpen, onClose }) => {
             </div>
           </div>
           
-          <button 
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors relative z-10"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex gap-2 relative z-10">
+            {messages.length > 1 && (
+              <button 
+                onClick={() => setMessages(mockChatHistory)}
+                title="Sohbeti Temizle"
+                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+            <button 
+              onClick={onClose}
+              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 dark:bg-transparent space-y-6">
           
           <div className="text-center pb-4">
-            <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-[10px] font-bold uppercase tracking-wider">Bugün</span>
+            <span className="px-3 py-1 bg-gray-100 dark:bg-[#2A352B] text-gray-500 dark:text-gray-400 rounded-full text-[10px] font-bold uppercase tracking-wider">Bugün</span>
           </div>
 
           {messages.map((msg) => (
@@ -123,12 +178,12 @@ const ChatbotSlideover = ({ isOpen, onClose }) => {
                 {/* Avatar */}
                 <div className="shrink-0 mt-auto">
                   {msg.sender === 'volty' ? (
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center border border-green-200">
-                      <Brain className="w-4 h-4 text-green-700" />
+                    <div className="w-8 h-8 bg-green-100 dark:bg-emerald-950/40 rounded-full flex items-center justify-center border border-green-200 dark:border-emerald-900/50">
+                      <Brain className="w-4 h-4 text-green-700 dark:text-green-500" />
                     </div>
                   ) : (
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center border border-blue-200">
-                      <User className="w-4 h-4 text-blue-700" />
+                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center border border-blue-200 dark:border-blue-900/50">
+                      <User className="w-4 h-4 text-blue-700 dark:text-blue-500" />
                     </div>
                   )}
                 </div>
@@ -138,8 +193,8 @@ const ChatbotSlideover = ({ isOpen, onClose }) => {
                   <div 
                     className={`px-5 py-3.5 rounded-2xl shadow-sm text-sm font-medium leading-relaxed ${
                       msg.sender === 'user' 
-                        ? 'bg-gray-900 text-white rounded-br-sm' 
-                        : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'
+                        ? 'bg-gray-900 dark:bg-[#4C811F] text-white rounded-br-sm' 
+                        : 'bg-white dark:bg-[#1E271F] text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-emerald-950/30 rounded-bl-sm'
                     }`}
                   >
                     {msg.text}
@@ -166,14 +221,14 @@ const ChatbotSlideover = ({ isOpen, onClose }) => {
             <div className="flex w-full justify-start">
               <div className="flex gap-3 max-w-[85%]">
                 <div className="shrink-0 mt-auto">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center border border-green-200">
-                    <Brain className="w-4 h-4 text-green-700" />
+                  <div className="w-8 h-8 bg-green-100 dark:bg-emerald-950/40 rounded-full flex items-center justify-center border border-green-200 dark:border-emerald-900/50">
+                    <Brain className="w-4 h-4 text-green-700 dark:text-green-500" />
                   </div>
                 </div>
-                <div className="px-5 py-4 bg-white border border-gray-100 rounded-2xl rounded-bl-sm shadow-sm flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+                <div className="px-5 py-4 bg-white dark:bg-[#1E271F] border border-gray-100 dark:border-emerald-950/30 rounded-2xl rounded-bl-sm shadow-sm flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
                 </div>
               </div>
             </div>
@@ -183,14 +238,20 @@ const ChatbotSlideover = ({ isOpen, onClose }) => {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 bg-white border-t border-gray-100">
+        <div className="p-4 bg-white dark:bg-[#1E271F] border-t border-gray-100 dark:border-emerald-950/30">
           <form 
             onSubmit={handleSendMessage}
-            className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-2 py-2 focus-within:border-gray-900 focus-within:ring-2 focus-within:ring-gray-900/10 transition-all"
+            className="flex items-center gap-2 bg-gray-50 dark:bg-[#2A352B] border border-gray-200 dark:border-emerald-950/50 rounded-full px-2 py-2 focus-within:border-gray-900 dark:focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-gray-900/10 dark:focus-within:ring-emerald-500/10 transition-all"
           >
             <button 
               type="button"
-              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition-colors shrink-0"
+              onClick={toggleListening}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+                isListening 
+                  ? 'bg-red-500 text-white animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]' 
+                  : 'text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-emerald-900/30'
+              }`}
+              title={isListening ? "Dinleniyor... (Durdurmak için tıklayın)" : "Sesle yaz"}
             >
               <Mic className="w-5 h-5" />
             </button>
@@ -199,7 +260,7 @@ const ChatbotSlideover = ({ isOpen, onClose }) => {
               placeholder="Volty'ye bir soru sor..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              className="flex-1 bg-transparent border-none focus:outline-none text-sm font-medium text-gray-900 placeholder:text-gray-400"
+              className="flex-1 bg-transparent border-none focus:outline-none text-sm font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
             <button 
               type="submit"

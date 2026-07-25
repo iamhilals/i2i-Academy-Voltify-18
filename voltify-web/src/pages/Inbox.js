@@ -169,8 +169,8 @@ const formatInboxDate = (iso) => {
 
 const AlertContent = ({ msg, meta }) => {
   const toneClasses = meta.tone === 'red'
-    ? 'bg-red-50 border-red-200 text-red-800'
-    : 'bg-orange-50 border-orange-200 text-orange-800';
+    ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/30 text-red-800 dark:text-red-200'
+    : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900/30 text-orange-800 dark:text-orange-200';
   return (
     <div className="space-y-6">
       <div className={`flex items-center gap-4 p-4 rounded-2xl border ${toneClasses}`}>
@@ -180,8 +180,8 @@ const AlertContent = ({ msg, meta }) => {
           <p className="text-sm font-medium opacity-90">Lokasyon: {msg.homeName || 'Eviniz'}</p>
         </div>
       </div>
-      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
-        <p className="text-gray-700 font-medium leading-relaxed whitespace-pre-line">{msg.body}</p>
+      <div className="bg-gray-50 dark:bg-[#182119] rounded-2xl p-6 border border-gray-100 dark:border-emerald-950/30">
+        <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed whitespace-pre-line">{msg.body}</p>
       </div>
       {msg.emailSent && (
         <p className="text-xs text-gray-400 flex items-center gap-1.5">
@@ -246,15 +246,15 @@ const Inbox = () => {
   );
 
   return (
-    <div className="w-full h-[calc(100vh-140px)] flex bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+    <div className="w-full h-[calc(100vh-140px)] flex bg-white dark:bg-[#1E271F] rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-300">
       
       {/* Left Sidebar (Mail List) */}
-      <div className="w-full md:w-1/3 lg:w-[400px] flex flex-col border-r border-gray-100 bg-gray-50/30">
+      <div className="w-full md:w-1/3 lg:w-[400px] flex flex-col border-r border-gray-100 dark:border-emerald-950/30 bg-gray-50/30 dark:bg-black/10">
         
         {/* Header & Search */}
-        <div className="p-6 border-b border-gray-100">
+        <div className="p-6 border-b border-gray-100 dark:border-emerald-950/30">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
               <InboxIcon className="w-6 h-6 text-[#4C811F]" />
               Gelen Kutusu
             </h2>
@@ -265,7 +265,7 @@ const Inbox = () => {
               placeholder="Maillerde ara..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl font-medium text-sm focus:outline-none focus:border-[#4C811F] transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#182119] border border-gray-200 dark:border-emerald-950/30 rounded-xl font-medium text-sm focus:outline-none focus:border-[#4C811F] text-gray-900 dark:text-white transition-colors"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           </div>
@@ -276,7 +276,7 @@ const Inbox = () => {
           {filteredEmails.length === 0 ? (
             <div className="p-8 text-center text-gray-500 font-medium text-sm">Sonuç bulunamadı.</div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-emerald-950/30">
               {filteredEmails.map(email => (
                 <div 
                   key={email.id}
@@ -287,22 +287,22 @@ const Inbox = () => {
                   }}
                   className={`p-5 cursor-pointer transition-colors relative border-l-4 ${
                     activeMail.id === email.id 
-                      ? 'bg-blue-50/50 border-blue-500' 
-                      : 'hover:bg-gray-50 border-transparent'
+                      ? 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-500' 
+                      : 'hover:bg-gray-50 dark:hover:bg-[#2A352B] border-transparent'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-1">
-                    <h4 className={`font-bold text-sm ${email.isUnread ? 'text-gray-900' : 'text-gray-700'}`}>
+                    <h4 className={`font-bold text-sm ${email.isUnread ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                       {email.sender}
                     </h4>
                     <span className="text-[10px] font-bold text-gray-400 whitespace-nowrap ml-2">
                       {email.date}
                     </span>
                   </div>
-                  <h5 className={`text-sm mb-1 line-clamp-1 pr-6 ${email.isUnread ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>
+                  <h5 className={`text-sm mb-1 line-clamp-1 pr-6 ${email.isUnread ? 'font-bold text-gray-900 dark:text-gray-100' : 'font-semibold text-gray-800 dark:text-gray-400'}`}>
                     {email.subject}
                   </h5>
-                  <p className={`text-xs line-clamp-2 ${email.isUnread ? 'font-medium text-gray-600' : 'font-medium text-gray-500'}`}>
+                  <p className={`text-xs line-clamp-2 ${email.isUnread ? 'font-medium text-gray-600 dark:text-gray-300' : 'font-medium text-gray-500 dark:text-gray-500'}`}>
                     {email.preview}
                   </p>
 
@@ -318,25 +318,25 @@ const Inbox = () => {
       </div>
 
       {/* Right Content (Reading Pane) */}
-      <div className="hidden md:flex flex-1 flex-col bg-white overflow-hidden relative">
+      <div className="hidden md:flex flex-1 flex-col bg-white dark:bg-[#1E271F] overflow-hidden relative">
         {activeMail ? (
           <>
             {/* Top Toolbar */}
-            <div className="h-16 border-b border-gray-100 flex items-center justify-between px-8 shrink-0 bg-white">
+            <div className="h-16 border-b border-gray-100 dark:border-emerald-950/30 flex items-center justify-between px-8 shrink-0 bg-white dark:bg-[#1E271F]">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-sm uppercase">
+                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-[#2A352B] flex items-center justify-center text-gray-600 dark:text-gray-300 font-bold text-sm uppercase">
                   {activeMail.sender.substring(0, 2)}
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 text-sm leading-tight">{activeMail.sender}</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{activeMail.sender}</h3>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">kime: ben</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <button className="w-10 h-10 rounded-full hover:bg-gray-50 flex items-center justify-center text-gray-400 hover:text-yellow-500 transition-colors">
+                <button className="w-10 h-10 rounded-full hover:bg-gray-50 dark:hover:bg-[#2A352B] flex items-center justify-center text-gray-400 hover:text-yellow-500 transition-colors">
                   <Star className={`w-5 h-5 ${activeMail.isStarred ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                 </button>
-                <button className="w-10 h-10 rounded-full hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <button className="w-10 h-10 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
                   <Trash2 className="w-5 h-5" />
                 </button>
               </div>
@@ -345,8 +345,8 @@ const Inbox = () => {
             {/* Email Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
               <div className="max-w-2xl mx-auto">
-                <div className="mb-10 border-b border-gray-100 pb-6 flex justify-between items-end">
-                  <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight pr-4">
+                <div className="mb-10 border-b border-gray-100 dark:border-emerald-950/30 pb-6 flex justify-between items-end">
+                  <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-tight pr-4">
                     {activeMail.subject}
                   </h1>
                   <span className="text-sm font-bold text-gray-400 whitespace-nowrap shrink-0">{activeMail.date}</span>

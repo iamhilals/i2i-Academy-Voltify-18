@@ -7,6 +7,7 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 import DeviceDetailModal from '../components/DeviceDetailModal';
+import { getDeviceLocalImage } from '../utils/deviceMapping';
 import AddDeviceSlideover from '../components/AddDeviceSlideover';
 import { homeService } from '../services/homeService';
 
@@ -24,47 +25,6 @@ const mockHomeData = {
 };
 
 const COLORS = ['#3B82F6', '#F97316', '#EAB308', '#8B5CF6'];
-
-// Maps device name/type to a local public PNG image path
-const getDeviceLocalImage = (type, name) => {
-  const lower = (name || '').toLowerCase();
-  const lType = (type || '').toLowerCase();
-  
-  if (lower.includes('buzdolabı') || lower.includes('dondurucu') || lType.includes('soğutucu')) {
-    return '/fridge.png';
-  }
-  if (lower.includes('klima') || lower.includes(' ac') || lType.includes('iklimlendirme')) {
-    return '/ac.png';
-  }
-  if (lower.includes('fırın') || lower.includes('ocak') || lower.includes('ankastre') || lType.includes('ocak') || lType.includes('fırın') || lower.includes('stove') || lower.includes('oven')) {
-    return '/oven.png';
-  }
-  if (lower.includes('çamaşır') || lower.includes('washer') || lType.includes('çamaşır') || lower.includes('kurutucu') || lower.includes('dryer')) {
-    return '/washer.png';
-  }
-  if (lower.includes('bulaşık') || lower.includes('dishwasher') || lType.includes('bulaşık')) {
-    return '/dishwasher.png';
-  }
-  if (lower.includes('televizyon') || lower.includes(' tv') || lower.startsWith('tv') || (lType.includes('elektronik') && lower.includes('tv'))) {
-    return '/tv.png';
-  }
-  if (lower.includes('konsol') || lower.includes('oyun') || lower.includes('game') || lower.includes('playstation') || lower.includes('xbox')) {
-    return '/console.png';
-  }
-  if (lower.includes('süpürge') || lower.includes('vacuum') || lower.includes('robot')) {
-    return '/vacuum.png';
-  }
-  if (lower.includes('kombi') || lower.includes('ısıtıcı') || lower.includes('boiler')) {
-    return '/boiler.png';
-  }
-  if (lower.includes('priz') || lower.includes('plug')) {
-    return '/plug.png';
-  }
-  if (lower.includes('ampul') || lower.includes('lamba') || lower.includes('bulb') || lower.includes('aydınlatma')) {
-    return '/bulb.png';
-  }
-  return '/plug.png'; // default fallback
-};
 
 const HomeDetail = () => {
   const { id } = useParams();
@@ -148,10 +108,12 @@ const HomeDetail = () => {
 
     try {
       await homeService.updateAppliance(id, deviceToToggle.id, {
-        name: deviceToToggle.name
+        name: deviceToToggle.name,
+        currentWattage: nextWattage,
+        isOn: !isOff
       });
     } catch (err) {
-      console.warn('Backend update failed:', err);
+      console.warn('Update toggle error:', err);
     }
   };
 

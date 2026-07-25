@@ -279,6 +279,7 @@ public class HomeService {
         if (updated.getSafePowerLimit() != null) appliance.setSafePowerLimit(updated.getSafePowerLimit());
         if (updated.getRoom() != null) appliance.setRoom(updated.getRoom());
         if (updated.getType() != null) appliance.setType(updated.getType());
+        if (updated.getIsOn() != null) appliance.setIsOn(updated.getIsOn());
 
         return applianceRepository.save(appliance);
     }
