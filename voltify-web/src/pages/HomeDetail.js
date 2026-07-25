@@ -33,7 +33,7 @@ const HomeDetail = () => {
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
   const [homeState, setHomeState] = useState(null);
   const [appliances, setAppliances] = useState([]);
-  const [hourlyTrend, setHourlyTrend] = useState([]);
+  const [homeSamples, setHomeSamples] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -66,6 +66,12 @@ const HomeDetail = () => {
           const fresh = freshAppliances.find((a) => a.id === prev.id);
           return fresh ? { ...prev, ...fresh } : prev;
         });
+        // Canlı güç trendi için ev toplam gücünü 2 sn'de bir örnekle
+        const totalW = freshAppliances.reduce((acc, a) => acc + (a.currentWattage || 0), 0);
+        setHomeSamples((prev) => {
+          const next = [...prev, { t: Date.now(), watt: totalW }];
+          return next.length > 240 ? next.slice(-240) : next; // ~8 dk canlı pencere
+        });
       } catch (err) {
         // Hatalar api.js interceptor'ında kullanıcıya toast olarak gösterilir
       } finally {
@@ -82,52 +88,6 @@ const HomeDetail = () => {
       clearInterval(statusTimer);
     };
   }, [id]);
-
-  // 24 saatlik trend: cihazların GERÇEK ölçümlerinden (Ignite) saat başına toplam güç → kWh & TL.
-  // (Kümülatif snapshot yerine; o restart'ta sıfırlanıp azalan/yanıltıcı çizgi üretiyordu.)
-  useEffect(() => {
-    if (!id || appliances.length === 0) return undefined;
-    let active = true;
-    const ids = appliances.map((a) => a.id);
-    const rate = (homeState && homeState.baseRate) || 2.07;
-
-    const buildTrend = async () => {
-      try {
-        const readingsArrays = await Promise.all(
-          ids.map((aid) => homeService.getApplianceReadings(id, aid, 1440).catch(() => []))
-        );
-        if (!active) return;
-        // Her cihaz için saatlik ortalama watt
-        const perAppl = readingsArrays.map((arr) => {
-          const sum = new Array(24).fill(0);
-          const cnt = new Array(24).fill(0);
-          (Array.isArray(arr) ? arr : []).forEach((r) => {
-            const h = new Date(r.timestampMillis).getHours();
-            sum[h] += r.watt; cnt[h] += 1;
-          });
-          return sum.map((s, h) => (cnt[h] ? s / cnt[h] : null));
-        });
-        // Saat başına ev toplam gücü → kWh (ort. kW × 1 saat) ve TL
-        const rows = [];
-        for (let h = 0; h < 24; h++) {
-          let watts = 0; let any = false;
-          perAppl.forEach((pa) => { if (pa[h] != null) { watts += pa[h]; any = true; } });
-          if (any) {
-            const kwh = +(watts / 1000).toFixed(3);
-            rows.push({ time: `${String(h).padStart(2, '0')}:00`, consumption: kwh, cost: +(kwh * rate).toFixed(2) });
-          }
-        }
-        setHourlyTrend(rows);
-      } catch (e) {
-        // sessizce geç
-      }
-    };
-
-    buildTrend();
-    const timer = setInterval(buildTrend, 20000);
-    return () => { active = false; clearInterval(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, appliances.map((a) => a.id).join(','), homeState && homeState.baseRate]);
 
   const handleToggleDevice = async (deviceToToggle) => {
     const nextOn = deviceToToggle.powerOn === false; // kapalıysa aç, açıksa kapat
@@ -161,11 +121,34 @@ const HomeDetail = () => {
   // Anlık toplam cihaz gücü (canlı telemetriden)
   const totalDeviceWatt = appliances.reduce((acc, a) => acc + (a.currentWattage || 0), 0);
 
-  // 24 saatlik trend gerçek ölçümlerden (yukarıdaki effect doldurur).
-  // Henüz yeterli ölçüm yoksa anlık değerle tek noktalı gösterim.
-  const dailyTrendData = hourlyTrend.length > 0
-    ? hourlyTrend
-    : [{ time: 'Şimdi', consumption: +((totalDeviceWatt / 1000)).toFixed(2), cost: +currentBalance.toFixed(2) }];
+  // Canlı güç trendi: son ~8 dk'nın gerçek toplam gücü ~30 kovaya bölünür (yumuşak eğri).
+  const trendRate = home.baseRate || 2.07;
+  const dailyTrendData = (() => {
+    if (homeSamples.length < 2) {
+      const kw = +(totalDeviceWatt / 1000).toFixed(2);
+      return [{ time: 'Şimdi', consumption: kw, cost: +(kw * trendRate).toFixed(2) }];
+    }
+    const N = 30;
+    const t0 = homeSamples[0].t;
+    const t1 = homeSamples[homeSamples.length - 1].t;
+    const span = Math.max(t1 - t0, 60000);
+    const bucketMs = span / N;
+    const rows = [];
+    for (let i = 0; i < N; i++) {
+      const start = t0 + i * bucketMs;
+      const end = i === N - 1 ? t1 + 1 : start + bucketMs;
+      const inB = homeSamples.filter((s) => s.t >= start && s.t < end);
+      if (inB.length) {
+        const kw = (inB.reduce((a, s) => a + s.watt, 0) / inB.length) / 1000;
+        rows.push({
+          time: new Date(end).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+          consumption: +kw.toFixed(2),
+          cost: +(kw * trendRate).toFixed(2),
+        });
+      }
+    }
+    return rows;
+  })();
 
   const weeklyCostData = dailyTrendData;
 
@@ -386,7 +369,7 @@ const HomeDetail = () => {
           <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm">
             <div className="flex items-center gap-2 mb-6">
               <Activity className="w-5 h-5 text-gray-400" />
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">24 Saatlik Tüketim Trendi (kWh)</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Canlı Güç Trendi (kW)</h3>
             </div>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -414,7 +397,7 @@ const HomeDetail = () => {
             <div className="bg-white dark:bg-[#1E271F] p-6 rounded-3xl border border-gray-100 dark:border-emerald-950/30 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
                 <TurkishLira className="w-5 h-5 text-gray-400" />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">24 Saatlik Maliyet (₺)</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Maliyet Hızı (₺/saat)</h3>
               </div>
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
