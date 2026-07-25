@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS homes (
     base_rate        DOUBLE PRECISION NOT NULL DEFAULT 2.07,
     penalty_rate     DOUBLE PRECISION NOT NULL DEFAULT 5.18,
     square_meters    INTEGER,
-    room_layout      VARCHAR(255)
+    room_layout      VARCHAR(255),
+    image_url        TEXT
 );
 
 -- 3. Appliances
