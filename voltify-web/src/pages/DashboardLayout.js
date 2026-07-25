@@ -388,6 +388,23 @@ const DashboardLayout = () => {
         {/* Page Content */}
         <div className="flex-1 overflow-auto px-8 pb-8 relative z-10">
           <Outlet />
+
+          {/* Voltify Team Footer */}
+          <footer className="mt-16 mb-4 py-8 border-t border-gray-200 dark:border-emerald-950/30 text-center">
+            <h4 className="text-base font-black text-gray-800 dark:text-white tracking-wide mb-4">Voltify Team</h4>
+            <div className="flex items-center justify-center gap-3 flex-wrap mb-4">
+              <span className="px-4 py-2 bg-white dark:bg-[#2A352B] border border-gray-200 dark:border-emerald-950/30 rounded-full text-sm font-bold text-gray-700 dark:text-gray-200 shadow-sm">
+                Hilal Ayşe AKGÜL
+              </span>
+              <span className="px-4 py-2 bg-white dark:bg-[#2A352B] border border-gray-200 dark:border-emerald-950/30 rounded-full text-sm font-bold text-gray-700 dark:text-gray-200 shadow-sm">
+                Sude Naz AKTAŞ
+              </span>
+              <span className="px-4 py-2 bg-white dark:bg-[#2A352B] border border-gray-200 dark:border-emerald-950/30 rounded-full text-sm font-bold text-gray-700 dark:text-gray-200 shadow-sm">
+                Volkan YÜKSEL
+              </span>
+            </div>
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Developed by the Voltify Team • i2i Academy 2026</p>
+          </footer>
         </div>
 
         {/* Floating Green Leaves / Falling Effect (Rendered in both Light & Dark modes) */}
