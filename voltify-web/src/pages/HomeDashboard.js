@@ -111,15 +111,15 @@ const HomeDashboard = () => {
       <AddHomeSlideover isOpen={isAddHomeOpen} onClose={() => setIsAddHomeOpen(false)} onSuccess={loadHomes} />
       
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Evlerim</h1>
-          <p className="text-gray-500 dark:text-gray-400 font-medium mt-1">Tüm lokasyonlarınızın enerji durumu</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Evlerim</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm font-medium mt-1">Tüm lokasyonlarınızın enerji durumu</p>
         </div>
         <div className="flex gap-3">
           <button 
             onClick={() => setIsAddHomeOpen(true)}
-            className="flex items-center gap-2 px-5 py-2 bg-[#4C811F] hover:bg-green-700 text-white rounded-xl transition-colors font-bold shadow-lg shadow-green-900/20"
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#4C811F] hover:bg-green-700 text-white rounded-xl transition-colors font-bold shadow-lg shadow-green-900/20 text-sm"
           >
             <Plus className="w-5 h-5" />
             Ev Ekle

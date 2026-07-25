@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutGrid, Server, BarChart3, Zap, Settings, Brain, Atom, LogOut, Moon, Sun, Bell, CreditCard, Mail, X } from 'lucide-react';
+import { LayoutGrid, Server, BarChart3, Zap, Settings, Brain, Atom, LogOut, Moon, Sun, Bell, CreditCard, Mail, X, Menu } from 'lucide-react';
 import ChatbotSlideover from '../components/ChatbotSlideover';
 import MusicPlayerBar from '../components/MusicPlayerBar';
 import { authService } from '../services/authService';
@@ -10,6 +10,7 @@ import { homeService } from '../services/homeService';
 const DashboardLayout = () => {
   const navigate = useNavigate();
   const [showTooltip, setShowTooltip] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('voltify_theme');
     return saved ? saved === 'dark' : false;
@@ -134,19 +135,38 @@ const DashboardLayout = () => {
 
   return (
     <div className="flex h-screen bg-[#F5F7F5] dark:bg-[#181F19] font-sans overflow-hidden transition-colors duration-300">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-[#1E271F] border-r border-gray-100 dark:border-emerald-950/30 flex flex-col justify-between shadow-[2px_0_10px_rgba(0,0,0,0.02)] z-10 transition-colors duration-300">
+      
+      {/* Mobile Drawer Backdrop Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Drawer */}
+      <aside className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#1E271F] border-r border-gray-100 dark:border-emerald-950/30 flex flex-col justify-between shadow-2xl md:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-transform duration-300 transform ${
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      }`}>
         <div>
           {/* Logo Area */}
           <div 
-            onClick={() => navigate('/dashboard')}
-            className="p-6 flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => { navigate('/dashboard'); setIsMobileMenuOpen(false); }}
+            className="p-6 flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity"
             title="Ana Sayfaya Dön"
           >
-            <div className="w-12 h-12 flex items-center justify-center rounded-full overflow-hidden shadow-sm border border-gray-100 dark:border-emerald-950/20 bg-white dark:bg-[#2A352B]">
-              <img src="/logo.png" alt="Voltify Logo" className="w-full h-full object-cover" />
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 flex items-center justify-center rounded-full overflow-hidden shadow-sm border border-gray-100 dark:border-emerald-950/20 bg-white dark:bg-[#2A352B]">
+                <img src="/logo.png" alt="Voltify Logo" className="w-full h-full object-cover" />
+              </div>
+              <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 tracking-tighter">Voltify</span>
             </div>
-            <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 tracking-tighter">Voltify</span>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setIsMobileMenuOpen(false); }} 
+              className="md:hidden p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Navigation */}
@@ -154,6 +174,7 @@ const DashboardLayout = () => {
             <NavLink
               to="/dashboard"
               end
+              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 font-medium text-sm ${
                   isActive
@@ -167,6 +188,7 @@ const DashboardLayout = () => {
             </NavLink>
             <NavLink
               to="/dashboard/devices"
+              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 font-medium text-sm ${
                   isActive
@@ -180,6 +202,7 @@ const DashboardLayout = () => {
             </NavLink>
             <NavLink
               to="/dashboard/statistics"
+              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 font-medium text-sm ${
                   isActive
@@ -193,6 +216,7 @@ const DashboardLayout = () => {
             </NavLink>
             <NavLink
               to="/dashboard/billing"
+              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 font-medium text-sm ${
                   isActive
@@ -206,6 +230,7 @@ const DashboardLayout = () => {
             </NavLink>
             <NavLink
               to="/dashboard/inbox"
+              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 font-medium text-sm relative ${
                   isActive
@@ -219,6 +244,7 @@ const DashboardLayout = () => {
             </NavLink>
             <NavLink
               to="/dashboard/analytics"
+              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 font-medium text-sm ${
                   isActive
@@ -232,6 +258,7 @@ const DashboardLayout = () => {
             </NavLink>
             <NavLink
               to="/dashboard/automations"
+              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 font-medium text-sm ${
                   isActive
@@ -249,7 +276,7 @@ const DashboardLayout = () => {
         {/* Bottom Actions (Profile, Logout, Pro Plan) */}
         <div className="p-4 mb-4 flex flex-col gap-2">
           <button 
-            onClick={() => navigate('/dashboard/settings')}
+            onClick={() => { navigate('/dashboard/settings'); setIsMobileMenuOpen(false); }}
             className="w-full bg-white dark:bg-[#1E271F] hover:bg-gray-50 dark:hover:bg-[#253026] border border-gray-200 dark:border-emerald-950/30 rounded-xl py-3 px-4 transition-colors flex items-center justify-between group shadow-sm cursor-pointer"
             title="Hesap ve Profil Ayarları"
           >
@@ -280,10 +307,20 @@ const DashboardLayout = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Topbar */}
-        <header className="h-20 bg-transparent flex items-center justify-between px-8 z-40 relative transition-colors">
-          <div className="flex items-center gap-3 bg-blue-50/50 dark:bg-emerald-950/20 backdrop-blur-sm px-4 py-2 rounded-full border border-blue-100/50 dark:border-emerald-900/20">
-            <BarChart3 className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-medium text-blue-900 dark:text-emerald-300">Canlı Tüketim: {liveKw.toFixed(2)} kW</span>
+        <header className="h-20 bg-transparent flex items-center justify-between px-4 md:px-8 z-40 relative transition-colors">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl bg-white dark:bg-[#1E271F] border border-gray-200 dark:border-emerald-950/30 text-gray-700 dark:text-gray-200 shadow-sm"
+              title="Menüyü Aç/Kapat"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
+            <div className="flex items-center gap-3 bg-blue-50/50 dark:bg-emerald-950/20 backdrop-blur-sm px-3 md:px-4 py-2 rounded-full border border-blue-100/50 dark:border-emerald-900/20">
+              <BarChart3 className="w-4 h-4 text-blue-500 shrink-0" />
+              <span className="text-xs md:text-sm font-medium text-blue-900 dark:text-emerald-300">Canlı Tüketim: {liveKw.toFixed(2)} kW</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-6">
