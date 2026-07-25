@@ -16,17 +16,33 @@ const AddDeviceSlideover = ({ isOpen, onClose, onAddDevice, homeId, roomLayout }
 
   // Dynamic rooms selection based on home layout
   const getRoomsForLayout = (layout) => {
+    if (layout && layout.includes(':')) {
+      const parts = layout.split(':');
+      const baseLayout = parts[0];
+      if (baseLayout === '1+0') {
+        return [parts[1] || 'Studio Alanı'];
+      }
+      if (baseLayout === '1+1') {
+        return [parts[1] || 'Salon', parts[2] || 'Yatak Odası', 'Mutfak'];
+      }
+      if (baseLayout === '2+1') {
+        return [parts[1] || 'Salon', parts[2] || 'Yatak Odası', parts[3] || 'Çocuk Odası', parts[4] || 'Banyo & Tuvalet', 'Mutfak'];
+      }
+      if (baseLayout === '3+1') {
+        return [parts[1] || 'Geniş Salon', parts[2] || 'Yatak Odası 1', parts[3] || 'Yatak Odası 2', parts[4] || 'Çocuk Odası', parts[5] || 'Banyo & Tuvalet', 'Mutfak'];
+      }
+    }
     switch (layout) {
       case '1+0':
         return ['Studio Alanı'];
       case '1+1':
-        return ['Salon', 'Yatak Odası'];
+        return ['Salon', 'Yatak Odası', 'Mutfak'];
       case '2+1':
-        return ['Salon', 'Ana Yatak Odası', 'Çocuk Odası'];
+        return ['Salon', 'Ana Yatak Odası', 'Çocuk Odası', 'Banyo & Tuvalet', 'Mutfak'];
       case '3+1':
-        return ['Geniş Salon', 'Yatak Odası 1', 'Yatak Odası 2', 'Çocuk Odası'];
+        return ['Geniş Salon', 'Yatak Odası 1', 'Yatak Odası 2', 'Çocuk Odası', 'Banyo & Tuvalet', 'Mutfak'];
       default:
-        return ['Salon', 'Yatak Odası'];
+        return ['Salon', 'Yatak Odası', 'Mutfak'];
     }
   };
   const availableRooms = useMemo(() => getRoomsForLayout(roomLayout), [roomLayout]);

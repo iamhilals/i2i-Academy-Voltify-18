@@ -16,10 +16,35 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
   const [homeType, setHomeType] = useState('apartment'); // 'house', 'apartment', 'office'
   const [squareMeters, setSquareMeters] = useState('');
   const [roomLayout, setRoomLayout] = useState('2+1');
+  const [salonName, setSalonName] = useState('Salon');
+  const [bedroomName, setBedroomName] = useState('Yatak Odası');
+  const [childName, setChildName] = useState('Çocuk Odası');
+  const [bathroomName, setBathroomName] = useState('Banyo & Tuvalet');
+  const [bathroomName3, setBathroomName3] = useState('Banyo & Tuvalet');
   const [hasSmartInfra, setHasSmartInfra] = useState(false);
   const [selectedImage, setSelectedImage] = useState(defaultImages[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (roomLayout === '1+0') {
+      setSalonName('Studio Alanı');
+    } else if (roomLayout === '1+1') {
+      setSalonName('Salon');
+      setBedroomName('Yatak Odası');
+    } else if (roomLayout === '2+1') {
+      setSalonName('Salon');
+      setBedroomName('Yatak Odası');
+      setChildName('Çocuk Odası');
+      setBathroomName('Banyo & Tuvalet');
+    } else if (roomLayout === '3+1') {
+      setSalonName('Geniş Salon');
+      setBedroomName('Yatak Odası 1');
+      setChildName('Yatak Odası 2');
+      setBathroomName('Çocuk Odası');
+      setBathroomName3('Banyo & Tuvalet');
+    }
+  }, [roomLayout]);
 
   // Calculate AI prediction based on square meters and type
   const calculateEstimate = () => {
@@ -78,13 +103,25 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    let finalRoomLayout = roomLayout;
+    if (roomLayout === '1+0') {
+      finalRoomLayout = `1+0:${salonName.trim() || 'Studio Alanı'}`;
+    } else if (roomLayout === '1+1') {
+      finalRoomLayout = `1+1:${salonName.trim() || 'Salon'}:${bedroomName.trim() || 'Yatak Odası'}`;
+    } else if (roomLayout === '2+1') {
+      finalRoomLayout = `2+1:${salonName.trim() || 'Salon'}:${bedroomName.trim() || 'Yatak Odası'}:${childName.trim() || 'Çocuk Odası'}:${bathroomName.trim() || 'Banyo & Tuvalet'}`;
+    } else if (roomLayout === '3+1') {
+      finalRoomLayout = `3+1:${salonName.trim() || 'Geniş Salon'}:${bedroomName.trim() || 'Yatak Odası 1'}:${childName.trim() || 'Yatak Odası 2'}:${bathroomName.trim() || 'Çocuk Odası'}:${bathroomName3.trim() || 'Banyo & Tuvalet'}`;
+    }
+
     try {
       await homeService.registerHome({
         name: homeName,
         address: address,
         squareMeters: parseInt(squareMeters) || 100,
         type: homeType,
-        roomLayout: roomLayout,
+        roomLayout: finalRoomLayout,
         imageUrl: selectedImage,
       });
       if (typeof onSuccess === 'function') {
@@ -101,6 +138,10 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
       setHomeType('apartment');
       setSquareMeters('');
       setRoomLayout('2+1');
+      setSalonName('Salon');
+      setBedroomName('Yatak Odası');
+      setChildName('Çocuk Odası');
+      setBathroomName('Banyo & Tuvalet');
       setHasSmartInfra(false);
       setSelectedImage(defaultImages[0]);
     }
@@ -247,6 +288,126 @@ const AddHomeSlideover = ({ isOpen, onClose, onSuccess }) => {
                 />
               </div>
             </div>
+
+            {/* Özel Oda İsimleri */}
+            {roomLayout !== '1+0' && (
+              <div className="p-5 bg-green-50/50 border border-green-100/50 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <h4 className="text-xs font-bold text-[#4C811F] uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#4C811F]" /> Oda İsimlerini Özelleştir
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Oda 1</label>
+                    <input 
+                      type="text" 
+                      value={salonName}
+                      onChange={(e) => setSalonName(e.target.value)}
+                      placeholder="Örn: Salon" 
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white border border-gray-200 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Oda 2</label>
+                    <input 
+                      type="text" 
+                      value={bedroomName}
+                      onChange={(e) => setBedroomName(e.target.value)}
+                      placeholder="Örn: Yatak Odası" 
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white border border-gray-200 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900"
+                      required
+                    />
+                  </div>
+                  {roomLayout === '2+1' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Oda 3</label>
+                        <input 
+                          type="text" 
+                          value={childName}
+                          onChange={(e) => setChildName(e.target.value)}
+                          placeholder="Örn: Çocuk Odası" 
+                          className="w-full px-3 py-2 text-sm rounded-lg bg-white border border-gray-200 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Oda 4</label>
+                        <input 
+                          type="text" 
+                          value={bathroomName}
+                          onChange={(e) => setBathroomName(e.target.value)}
+                          placeholder="Örn: Banyo & Tuvalet" 
+                          className="w-full px-3 py-2 text-sm rounded-lg bg-white border border-gray-200 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900"
+                          required
+                        />
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-bold italic">
+                        * Mutfak ("Ayrı Mutfak") odası zorunlu olarak tasarıma dâhildir.
+                      </div>
+                    </>
+                  )}
+                  {roomLayout === '3+1' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Oda 3</label>
+                        <input 
+                          type="text" 
+                          value={childName}
+                          onChange={(e) => setChildName(e.target.value)}
+                          placeholder="Örn: Yatak Odası 2" 
+                          className="w-full px-3 py-2 text-sm rounded-lg bg-white border border-gray-200 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Oda 4</label>
+                        <input 
+                          type="text" 
+                          value={bathroomName}
+                          onChange={(e) => setBathroomName(e.target.value)}
+                          placeholder="Örn: Çocuk Odası" 
+                          className="w-full px-3 py-2 text-sm rounded-lg bg-white border border-gray-200 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Oda 5</label>
+                        <input 
+                          type="text" 
+                          value={bathroomName3}
+                          onChange={(e) => setBathroomName3(e.target.value)}
+                          placeholder="Örn: Banyo & Tuvalet" 
+                          className="w-full px-3 py-2 text-sm rounded-lg bg-white border border-gray-200 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {roomLayout === '1+0' && (
+              <div className="p-5 bg-green-50/50 border border-green-100/50 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <h4 className="text-xs font-bold text-[#4C811F] uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#4C811F]" /> Oda İsimlerini Özelleştir
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Oda 1</label>
+                    <input 
+                      type="text" 
+                      value={salonName}
+                      onChange={(e) => setSalonName(e.target.value)}
+                      placeholder="Örn: Studio Yaşam Alanı" 
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white border border-gray-200 focus:border-[#4C811F] outline-none transition-all font-medium text-gray-900"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Ev Görseli (Image Selector) */}
             <div className="space-y-3">

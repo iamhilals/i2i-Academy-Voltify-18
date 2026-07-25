@@ -2422,81 +2422,143 @@ const Doors = ({ layout, size, playerRef }) => {
 const RoomLabels = ({ layout, size }) => {
   const half = size / 2;
   
-  if (layout === '1+0') {
+  let baseLayout = layout;
+  let customNames = {};
+
+  if (layout && layout.includes(':')) {
+    const parts = layout.split(':');
+    baseLayout = parts[0];
+    if (baseLayout === '1+0') {
+      customNames = { room1: parts[1] || 'Studio Yaşam Alanı' };
+    } else if (baseLayout === '1+1') {
+      customNames = { room1: parts[1] || 'Salon & Mutfak', room2: parts[2] || 'Yatak Odası', kitchen: 'Mutfak' };
+    } else if (baseLayout === '2+1') {
+      customNames = {
+        salon: parts[1] || 'Salon',
+        bedroom: parts[2] || 'Yatak Odası',
+        child: parts[3] || 'Çocuk Odası',
+        bathroom: parts[4] || 'Banyo & Tuvalet',
+        kitchen: 'Mutfak'
+      };
+    } else if (baseLayout === '3+1') {
+      customNames = {
+        salon: parts[1] || 'Geniş Salon',
+        room1: parts[2] || 'Yatak Odası 1',
+        room2: parts[3] || 'Yatak Odası 2',
+        room3: parts[4] || 'Çocuk Odası',
+        bathroom: parts[5] || 'Banyo & Tuvalet',
+        kitchen: 'Mutfak'
+      };
+    }
+  } else {
+    customNames = {
+      room1: layout === '1+0' ? 'Studio Yaşam Alanı' : layout === '1+1' ? 'Salon & Mutfak' : 'Geniş Salon',
+      room2: layout === '1+1' ? 'Yatak Odası' : 'Yatak Odası 1',
+      room3: 'Yatak Odası 2',
+      room4: 'Çocuk Odası',
+      salon: 'Salon',
+      bedroom: 'Yatak Odası',
+      child: 'Çocuk Odası',
+      bathroom: 'Banyo & Tuvalet',
+      kitchen: 'Mutfak'
+    };
+  }
+
+  if (baseLayout === '1+0') {
     return (
       <Html position={[0, 1.8, 0]} center distanceFactor={12}>
         <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-          Studio Yaşam Alanı
+          {customNames.room1}
         </div>
       </Html>
     );
   }
 
-  if (layout === '1+1') {
+  if (baseLayout === '1+1') {
     return (
       <group>
         <Html position={[-half / 2, 1.8, 0]} center distanceFactor={12}>
           <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-            Salon & Mutfak
+            {customNames.room1}
           </div>
         </Html>
         <Html position={[half / 2, 1.8, 0]} center distanceFactor={12}>
           <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-            Yatak Odası
+            {customNames.room2}
           </div>
         </Html>
       </group>
     );
   }
 
-  if (layout === '2+1') {
+  if (baseLayout === '2+1') {
     return (
       <group>
-        <Html position={[-half * 2/3, 1.8, 0]} center distanceFactor={12}>
+        {/* Salon: Left front side (Z > -3.5, X < -3) */}
+        <Html position={[-half * 2/3, 1.8, 1.0]} center distanceFactor={12}>
           <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-            Lüks Salon
+            {customNames.salon}
           </div>
         </Html>
-        <Html position={[half * 2/3, 1.8, -half * 2/3]} center distanceFactor={12}>
+        {/* Mutfak: Left rear side (Z < -3.5, X < -3) */}
+        <Html position={[-half * 2/3, 1.8, -6.5]} center distanceFactor={12}>
           <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-            Ana Yatak Odası
+            {customNames.kitchen}
           </div>
         </Html>
+        {/* Ana Yatak Odası: Right rear side (Z < -3.5, X > 3) */}
+        <Html position={[half * 2/3, 1.8, -6.5]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            {customNames.bedroom}
+          </div>
+        </Html>
+        {/* Banyo & Tuvalet: Right middle side (Z near 0, X > 3) */}
         <Html position={[half * 2/3, 1.8, 0]} center distanceFactor={12}>
           <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-            Ayrı Mutfak
+            {customNames.bathroom}
           </div>
         </Html>
-        <Html position={[half * 2/3, 1.8, half * 2/3]} center distanceFactor={12}>
+        {/* Çocuk Odası: Right front side (Z > 3.5, X > 3) */}
+        <Html position={[half * 2/3, 1.8, 6.5]} center distanceFactor={12}>
           <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-            Banyo & Tuvalet
+            {customNames.child}
           </div>
         </Html>
       </group>
     );
   }
 
-  if (layout === '3+1') {
+  if (baseLayout === '3+1') {
     return (
       <group>
         <Html position={[-half * 2/3, 1.8, 0]} center distanceFactor={12}>
           <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-            Geniş Salon
+            {customNames.salon}
+          </div>
+        </Html>
+        <Html position={[-half * 2/3, 1.8, -6.5]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            {customNames.kitchen}
           </div>
         </Html>
         <Html position={[half * 2/3, 1.8, -half * 2/3]} center distanceFactor={12}>
           <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-            Yatak Odası 1
+            {customNames.room1}
           </div>
         </Html>
         <Html position={[half * 2/3, 1.8, 0]} center distanceFactor={12}>
           <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-            Yatak Odası 2
+            {customNames.room2}
           </div>
         </Html>
-        <Html position={[half * 2/3, 1.8, half * 2/3]} center distanceFactor={12}>
+        <Html position={[half * 2/3, 1.8, 3.5]} center distanceFactor={12}>
           <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
-            Çocuk Odası
+            {customNames.room3}
+          </div>
+        </Html>
+        <Html position={[half * 2/3, 1.8, 6.5]} center distanceFactor={12}>
+          <div className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider shadow-lg select-none whitespace-nowrap">
+            {customNames.bathroom}
           </div>
         </Html>
       </group>
@@ -3057,12 +3119,59 @@ const MetaHome = () => {
     } catch (e) {}
     return {};
   });
-
   const homeName = persistedState.homeName || "Meta-House 3D";
   const [localDevices, setLocalDevices] = useState(() => persistedState.devices || EMPTY_ARRAY);
   const squareMeters = persistedState.squareMeters || 120;
-  const roomLayout = persistedState.roomLayout || "2+1";
+  
+  const rawRoomLayout = persistedState.roomLayout || "2+1";
+  const roomLayout = rawRoomLayout.includes(':') ? rawRoomLayout.split(':')[0] : rawRoomLayout;
 
+  const customNames = useMemo(() => {
+    const raw = rawRoomLayout;
+    if (raw.includes(':')) {
+      const parts = raw.split(':');
+      const baseLayout = parts[0];
+      if (baseLayout === '1+0') {
+        return { room1: parts[1] || 'Studio Yaşam Alanı' };
+      }
+      if (baseLayout === '1+1') {
+        return { room1: parts[1] || 'Salon & Mutfak', room2: parts[2] || 'Yatak Odası', kitchen: 'Mutfak' };
+      }
+      if (baseLayout === '2+1') {
+        return {
+          salon: parts[1] || 'Salon',
+          bedroom: parts[2] || 'Yatak Odası',
+          child: parts[3] || 'Çocuk Odası',
+          bathroom: parts[4] || 'Banyo & Tuvalet',
+          kitchen: 'Mutfak'
+        };
+      }
+      if (baseLayout === '3+1') {
+        return {
+          salon: parts[1] || 'Geniş Salon',
+          room1: parts[2] || 'Yatak Odası 1',
+          room2: parts[3] || 'Yatak Odası 2',
+          room3: parts[4] || 'Çocuk Odası',
+          bathroom: parts[5] || 'Banyo & Tuvalet',
+          kitchen: 'Mutfak'
+        };
+      }
+    }
+    return {
+      studio: 'Studio Yaşam Alanı',
+      salonMutfak: 'Salon & Mutfak',
+      yatak: 'Yatak Odası',
+      salon: 'Salon',
+      bedroom: 'Yatak Odası',
+      child: 'Çocuk Odası',
+      bathroom: 'Banyo & Tuvalet',
+      kitchen: 'Mutfak',
+      salon3: 'Geniş Salon',
+      bedroom3_1: 'Yatak Odası 1',
+      bedroom3_2: 'Yatak Odası 2',
+      child3: 'Çocuk Odası'
+    };
+  }, [rawRoomLayout]);
   // Native Speech-to-Action Voice Command Controller states
   const [isListening, setIsListening] = useState(false);
   const [speechTranscript, setSpeechTranscript] = useState('');
@@ -3132,23 +3241,34 @@ const MetaHome = () => {
     const half = size / 2;
     const offset = 2;
 
+    // High-precision helper to match room by custom name or fallback keywords
+    const matchRoomType = (rName, typeKey, defaultKeywords) => {
+      const customVal = (customNames[typeKey] || '').toLowerCase().trim();
+      const normalizedRName = (rName || '').toLowerCase().trim();
+      
+      if (!normalizedRName) return false;
+      if (customVal && normalizedRName === customVal) return true;
+      if (customVal && (customVal.includes(normalizedRName) || normalizedRName.includes(customVal))) return true;
+      return defaultKeywords.some(kw => normalizedRName.includes(kw));
+    };
+
     // Check device type or name to see if we can infer a room if not specified
     let room = device.room || localStorage.getItem(`voltify_device_room_${device.id}`);
     if (!room) {
       // Fallback inference based on device name or category
       const name = (device.name || '').toLowerCase();
       if (name.includes('klima') || name.includes('tv') || name.includes('televizyon') || name.includes('koltuk') || name.includes('ampul')) {
-        room = layout === '3+1' ? 'Geniş Salon' : 'Salon';
+        room = customNames.salon || 'Salon';
       } else if (name.includes('yatak') || name.includes('bilgisayar') || name.includes('laptop')) {
-        room = layout === '3+1' ? 'Yatak Odası 1' : 'Yatak Odası';
+        room = customNames.bedroom || 'Yatak Odası';
       } else if (name.includes('çocuk') || name.includes('oyun') || name.includes('konsol')) {
-        room = 'Çocuk Odası';
+        room = customNames.child || 'Çocuk Odası';
       } else {
-        room = layout === '3+1' ? 'Geniş Salon' : 'Salon'; // fallback to salon
+        room = customNames.salon || 'Salon'; // fallback to salon
       }
     }
 
-    const rName = room.toLowerCase();
+    const rName = room.toLowerCase().trim();
 
     // Layout: 1+0 (Studio)
     if (layout === '1+0') {
@@ -3165,7 +3285,8 @@ const MetaHome = () => {
 
     // Layout: 1+1
     if (layout === '1+1') {
-      if (rName.includes('yatak')) {
+      const isBedroom = matchRoomType(rName, 'room2', ['yatak', 'bedroom', 'oda 2']);
+      if (isBedroom) {
         // Yatak Odası (X > 0)
         const positions = [
           [(half - offset), 0.0, -(half - offset)],
@@ -3188,7 +3309,12 @@ const MetaHome = () => {
 
     // Layout: 2+1
     if (layout === '2+1') {
-      if (rName.includes('ana yatak') || rName.includes('yatak odası')) {
+      const isBedroom = matchRoomType(rName, 'bedroom', ['yatak', 'bedroom', 'oda 2']);
+      const isChild = matchRoomType(rName, 'child', ['çocuk', 'child', 'oda 3']);
+      const isKitchen = matchRoomType(rName, 'kitchen', ['mutfak', 'kitchen']);
+      const isBathroom = matchRoomType(rName, 'bathroom', ['banyo', 'tuvalet', 'bathroom', 'toilet', 'oda 4']);
+
+      if (isBedroom) {
         // Ana Yatak Odası (X > 0, Z < 0)
         const positions = [
           [(half - offset), 0.0, -(half - offset)],
@@ -3196,7 +3322,7 @@ const MetaHome = () => {
           [(half - offset), 0.0, -2]
         ];
         return positions[index % positions.length];
-      } else if (rName.includes('çocuk')) {
+      } else if (isChild) {
         // Çocuk Odası (X > 0, Z > 0)
         const positions = [
           [(half - offset), 0.0, (half - offset)],
@@ -3204,8 +3330,23 @@ const MetaHome = () => {
           [(half - offset), 0.0, 2]
         ];
         return positions[index % positions.length];
+      } else if (isKitchen) {
+        // Mutfak (X < 0, Z < -3.5)
+        const positions = [
+          [-6.0, 0.0, -6.5],
+          [-7.0, 0.0, -6.5],
+          [-5.0, 0.0, -6.5]
+        ];
+        return positions[index % positions.length];
+      } else if (isBathroom) {
+        // Banyo & Tuvalet (Right side, Z near 0)
+        const positions = [
+          [(half - offset), 0.0, 0],
+          [2, 0.0, 0]
+        ];
+        return positions[index % positions.length];
       } else {
-        // Salon (X < 0)
+        // Salon (X < 0, Z > -3.5)
         const positions = [
           [-(half - offset), 0.0, -(half - offset)],
           [-2, 0.0, -(half - offset)],
@@ -3218,33 +3359,54 @@ const MetaHome = () => {
 
     // Layout: 3+1
     if (layout === '3+1') {
-      if (rName.includes('yatak odası 1')) {
+      const isRoom1 = matchRoomType(rName, 'room1', ['yatak odası 1', 'yatak 1', 'oda 2']);
+      const isRoom2 = matchRoomType(rName, 'room2', ['yatak odası 2', 'yatak 2', 'oda 3']);
+      const isRoom3 = matchRoomType(rName, 'room3', ['çocuk', 'child', 'oda 4']);
+      const isBathroom = matchRoomType(rName, 'bathroom', ['banyo', 'tuvalet', 'bathroom', 'toilet', 'oda 5']);
+      const isKitchen = matchRoomType(rName, 'kitchen', ['mutfak', 'kitchen']);
+
+      if (isRoom1) {
         // Room 1 (X > half/3, Z < -half/3)
         const positions = [
           [(half - offset), 0.5, -(half - offset)],
           [(half - offset - 2), 0.5, -(half - offset)]
         ];
         return positions[index % positions.length];
-      } else if (rName.includes('yatak odası 2')) {
-        // Room 2 (X > half/3, -half/3 < Z < half/3)
+      } else if (isRoom2) {
+        // Room 2 (X > half/3, Z in [-half/3, half/3])
         const positions = [
           [(half - offset), 0.5, 0],
           [(half - offset - 2), 0.5, 0]
         ];
         return positions[index % positions.length];
-      } else if (rName.includes('çocuk')) {
+      } else if (isRoom3) {
         // Room 3 (X > half/3, Z > half/3)
         const positions = [
-          [(half - offset), 0.5, (half - offset)],
-          [(half - offset - 2), 0.5, (half - offset)]
+          [(half - offset), 0.5, 5.5],
+          [2, 0.5, 5.5]
+        ];
+        return positions[index % positions.length];
+      } else if (isBathroom) {
+        // Banyo (Right front side: Z > half/3)
+        const positions = [
+          [(half - offset), 0.5, 6.5],
+          [2, 0.5, 6.5]
+        ];
+        return positions[index % positions.length];
+      } else if (isKitchen) {
+        // Mutfak (X < -half/3, Z < -3.5)
+        const positions = [
+          [-6.0, 0.5, -6.5],
+          [-7.0, 0.5, -6.5]
         ];
         return positions[index % positions.length];
       } else {
-        // Geniş Salon (X < -half/3)
+        // Salon (X < -half/3)
         const positions = [
           [-(half - offset), 0.5, -(half - offset)],
-          [-(half - offset - 2), 0.5, -(half - offset)],
-          [-(half - offset), 0.5, (half - offset)]
+          [-2, 0.5, -(half - offset)],
+          [-(half - offset), 0.5, (half - offset)],
+          [-2, 0.5, (half - offset)]
         ];
         return positions[index % positions.length];
       }
@@ -3543,6 +3705,7 @@ const MetaHome = () => {
       });
       return updated;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localDevices, roomLayout, floorSize]);
 
   // Keyboard mapping
@@ -3567,7 +3730,7 @@ const MetaHome = () => {
         <div>
           <h1 className="text-2xl font-black text-white drop-shadow-md">{homeName} - 3D Mod</h1>
           <p className="text-white/80 text-xs font-bold bg-black/35 px-3 py-1 rounded-full inline-block mt-1">
-            {roomLayout} • {squareMeters} m² • Yön tuşları veya W,A,S,D ile hareket edin
+            {roomLayout} ({Object.values(customNames).filter(Boolean).join(', ')}) • {squareMeters} m² • Yön tuşları veya W,A,S,D ile hareket edin
           </p>
         </div>
       </div>
