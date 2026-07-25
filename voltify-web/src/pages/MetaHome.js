@@ -2565,6 +2565,16 @@ const Player = ({ playerRef, characterType = 'robot', initialPosition = [0, 0.5,
           return true;
         }
       }
+
+      // Salon-Kitchen divider wall at Z = -3.5 (only for 2+1 layout, left side X < -half/3)
+      if (roomLayout === '2+1' && x < -half / 3) {
+        if (Math.abs(z - (-3.5)) < 0.15 + r) {
+          const inDoorway = x > -5.0 && x < -4.0;
+          if (!inDoorway) {
+            return true;
+          }
+        }
+      }
     }
 
     if (roomLayout === '1+1') {
