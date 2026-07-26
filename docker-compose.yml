@@ -41,14 +41,6 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     restart: always
 
-  ignite:
-    image: apacheignite/ignite:2.15.0
-    container_name: voltify-ignite
-    ports:
-      - "10800:10800"
-      - "47100:47100"
-      - "47500:47500"
-    restart: always
 
   # Spring Boot Core Backend Service
   voltify-backend:
