@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Activity, AlertTriangle, TurkishLira, PieChart as PieChartIcon, Zap, Plus, Trash2 } from 'lucide-react';
 import { 
@@ -58,6 +58,21 @@ const HomeDetail = () => {
   };
   const [homeSamples, setHomeSamples] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const metaBtnRef = useRef(null);
+  const [spotlight, setSpotlight] = useState(null); // Meta-House butonunu vurgulamak için
+
+  // Sayfa açılınca Meta-House 3D butonunu spotlight ile öne çıkar (tıklayınca/6.5sn sonra kapanır)
+  useEffect(() => {
+    const show = setTimeout(() => {
+      const el = metaBtnRef.current;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        setSpotlight({ top: r.top, left: r.left, width: r.width, height: r.height });
+      }
+    }, 500);
+    const hide = setTimeout(() => setSpotlight(null), 6500);
+    return () => { clearTimeout(show); clearTimeout(hide); };
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -218,9 +233,10 @@ const HomeDetail = () => {
           Geri Dön
         </button>
 
-        <button 
+        <button
+          ref={metaBtnRef}
           onClick={() => navigate('/dashboard/meta-home', { state: { homeName: home.name, devices: appliances, squareMeters: home.squareMeters, roomLayout: home.roomLayout } })}
-          className="absolute top-6 right-6 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 backdrop-blur-md rounded-xl flex items-center gap-2 text-white font-bold transition-colors shadow-xl shadow-purple-900/40 border border-white/10"
+          className="absolute top-6 right-6 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 backdrop-blur-md rounded-xl flex items-center gap-2 text-white font-bold transition-colors shadow-xl shadow-purple-900/40 border border-white/10 z-10"
         >
           <Zap className="w-5 h-5" />
           Meta-House 3D ile Gezin
@@ -475,6 +491,51 @@ const HomeDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Meta-House 3D butonu spotlight (sayfa açılışında dikkat çeker, tıklayınca kapanır) */}
+      {spotlight && (
+        <div className="fixed inset-0 z-[90] cursor-pointer animate-in fade-in duration-300" onClick={() => setSpotlight(null)}>
+          {/* Dairesel açıklık + etrafı karartma (box-shadow tekniği) */}
+          <div
+            style={{
+              position: 'fixed',
+              top: spotlight.top - 12,
+              left: spotlight.left - 12,
+              width: spotlight.width + 24,
+              height: spotlight.height + 24,
+              borderRadius: '9999px',
+              boxShadow: '0 0 0 9999px rgba(15,23,42,0.7)',
+              pointerEvents: 'none',
+            }}
+          />
+          {/* Nabız gibi atan mor halka */}
+          <div
+            style={{
+              position: 'fixed',
+              top: spotlight.top - 12,
+              left: spotlight.left - 12,
+              width: spotlight.width + 24,
+              height: spotlight.height + 24,
+              pointerEvents: 'none',
+            }}
+            className="rounded-full ring-4 ring-purple-400/90 animate-pulse"
+          />
+          {/* Yönlendirme etiketi */}
+          <div
+            style={{
+              position: 'fixed',
+              top: spotlight.top + spotlight.height + 18,
+              right: Math.max(16, window.innerWidth - (spotlight.left + spotlight.width)),
+            }}
+            className="pointer-events-none text-right animate-in slide-in-from-top-2 fade-in duration-500"
+          >
+            <div className="inline-flex items-center gap-2 bg-white text-gray-900 font-bold text-sm px-4 py-2.5 rounded-2xl shadow-2xl">
+              <span className="text-lg">✨</span> Evinizi 3D dünyada gezin!
+            </div>
+            <p className="text-white/90 text-xs font-medium mt-2">Devam etmek için herhangi bir yere dokunun</p>
+          </div>
+        </div>
+      )}
 
       {/* Device Animation Modal */}
       <DeviceDetailModal
