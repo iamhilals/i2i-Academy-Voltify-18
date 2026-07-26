@@ -128,7 +128,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice, homeId }) 
       />
       
       {/* Main Modal Card */}
-      <div className="relative w-full max-w-5xl h-[80vh] flex items-center justify-center animate-in fade-in zoom-in-95 duration-200 z-10">
+      <div className="relative w-full max-w-5xl h-[85vh] md:h-[80vh] flex items-center justify-center animate-in fade-in zoom-in-95 duration-200 z-10">
         
         <button 
           onClick={onClose}
@@ -137,26 +137,26 @@ const DeviceDetailModal = ({ isOpen, onClose, device, onToggleDevice, homeId }) 
           <X className="w-6 h-6" />
         </button>
 
-        <div className="flex flex-col md:flex-row w-full h-full items-center justify-center gap-6">
-          
+        <div className="flex flex-col md:flex-row w-full h-full items-stretch md:items-center justify-center gap-4 md:gap-6 overflow-y-auto md:overflow-visible custom-scrollbar">
+
           {/* Dynamic Image Container matching exact device with local PNGs */}
-          <div className="relative w-[340px] h-full shrink-0 flex items-center justify-center rounded-[2rem] overflow-hidden shadow-2xl border border-white/20 bg-white">
-            <img 
+          <div className="relative w-full md:w-[340px] h-40 sm:h-52 md:h-full shrink-0 flex items-center justify-center rounded-[2rem] overflow-hidden shadow-2xl border border-white/20 bg-white">
+            <img
               src={getDeviceLocalImage(device.type, device.name)}
               alt={device.name}
-              className={`w-full h-full object-contain p-6 transition-all duration-500 ${isOff ? 'grayscale opacity-60' : ''}`}
+              className={`w-full h-full object-contain p-4 md:p-6 transition-all duration-500 ${isOff ? 'grayscale opacity-60' : ''}`}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent" />
-            <div className="absolute bottom-6 left-6 right-6">
+            <div className="absolute bottom-4 md:bottom-6 left-5 md:left-6 right-5 md:right-6">
               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white backdrop-blur-md ${isOff ? 'bg-gray-600' : 'bg-[#4C811F]'}`}>
                 {isOff ? 'CİHAZ KAPALI' : 'CİHAZ AKTİF'}
               </span>
-              <h3 className="text-2xl font-black text-white mt-1">{device.name}</h3>
+              <h3 className="text-xl md:text-2xl font-black text-white mt-1">{device.name}</h3>
             </div>
           </div>
 
           {/* Data Content Panel */}
-          <div className="flex-1 w-full max-w-2xl bg-white dark:bg-[#1E271F] rounded-[2rem] p-8 shadow-2xl overflow-y-auto max-h-full border border-gray-100 dark:border-emerald-950/30">
+          <div className="flex-1 w-full max-w-2xl bg-white dark:bg-[#1E271F] rounded-[2rem] p-5 sm:p-6 md:p-8 shadow-2xl md:overflow-y-auto md:max-h-full border border-gray-100 dark:border-emerald-950/30">
             
             {/* Header */}
             <div className="flex items-center justify-between mb-6">

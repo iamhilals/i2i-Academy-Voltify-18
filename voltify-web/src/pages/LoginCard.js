@@ -135,6 +135,22 @@ export default function LoginCard({ isDark, onGoRegister }) {
     }
   };
 
+  // Değerlendiriciler için tek tık demo giriş (admin / admin123)
+  const handleDemoLogin = async () => {
+    setError('');
+    setIsUnlocking(true);
+    try {
+      await authService.login('admin', 'admin123');
+      setTimeout(() => {
+        setIsUnlocking(false);
+        navigate('/dashboard');
+      }, 800);
+    } catch (err) {
+      setIsUnlocking(false);
+      setError('Demo hesabı bulunamadı. Backend çalışıyor mu?');
+    }
+  };
+
   return (
     <div className="w-[85vw] max-w-[360px] sm:max-w-[420px] mx-auto flex flex-col items-center pt-8 sm:pt-10 -mt-10">
       {/* KİLİT */}
@@ -189,7 +205,7 @@ export default function LoginCard({ isDark, onGoRegister }) {
           {/* Giriş butonu */}
           <motion.button type="submit" disabled={isUnlocking}
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-            className="w-full py-3.5 rounded-full font-heading font-semibold text-base flex items-center justify-center gap-2 shadow-md"
+            className="w-full py-2.5 rounded-full font-heading font-semibold text-sm flex items-center justify-center gap-2 shadow-md"
             style={{ background: 'linear-gradient(135deg,#7BC043,#5A9A2A)', color: '#fff' }}>
             <motion.svg
               animate={isUnlocking ? { scale: [1, 1.5, 1], rotate: [0, 360] } : { scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
@@ -198,6 +214,14 @@ export default function LoginCard({ isDark, onGoRegister }) {
               <path d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" />
             </motion.svg>
             {isUnlocking ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
+          </motion.button>
+
+          {/* Değerlendiriciler için tek tık demo giriş */}
+          <motion.button type="button" onClick={handleDemoLogin} disabled={isUnlocking}
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+            className="w-full py-2.5 rounded-full font-heading font-semibold text-sm flex items-center justify-center gap-2 border-2 transition-all"
+            style={{ borderColor: isDark ? '#7BC043' : '#5A9A2A', color: isDark ? '#7BC043' : '#366b00', background: 'transparent' }}>
+            <span role="img" aria-label="key">🔑</span> Admin Girişi (Demo)
           </motion.button>
 
           {/* Ayraç */}
