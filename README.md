@@ -104,8 +104,8 @@ Voltify is a **modular Spring Boot monolith** backed by three storage tiers, eac
 
 ```mermaid
 flowchart LR
-    SIM["🛰️ Telemetry Simulator<br/>@Scheduled 2s"] -->|telemetry topic| KAFKA[("📨 Apache Kafka")]
-    KAFKA -->|@KafkaListener| CONS["⚙️ Telemetry Consumer"]
+    SIM["🛰️ Telemetry Simulator<br/>every 2s"] -->|telemetry topic| KAFKA[("📨 Apache Kafka")]
+    KAFKA -->|Kafka listener| CONS["⚙️ Telemetry Consumer"]
     CONS --> TARIFF["🧮 Tariff Engine<br/>kWh · TL · quota"]
     CONS --> ANOM["🔥 Anomaly Check<br/>3 consecutive breaches"]
     TARIFF -->|1 · write first| IGNITE[("⚡ Apache Ignite<br/>live state")]
@@ -239,7 +239,7 @@ sequenceDiagram
     end
     Kaf->>Con: telemetry JSON
     Con->>Ign: 1) live watt · balance · counter
-    Con->>Pg: 2) update ledger (@Transactional)
+    Con->>Pg: 2) update ledger (transactional)
     alt quota ≥ 80% / 100% (first time)
         Con->>Pg: EventLog + set breach / penalty flag
         Con->>AI: prompt → advice → email
