@@ -1,8 +1,7 @@
 # Ignite runtime data
-ignite/
-**/ignite/
-work/
-**/work/
+/ignite/
+/work/
+
 
 # Node & Build artifacts
 node_modules/
@@ -17,3 +16,9 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# Environment variables (secrets protection)
+.env
+.env.local
+.env.*
+
