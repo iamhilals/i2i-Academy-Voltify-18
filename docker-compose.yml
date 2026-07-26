@@ -14,15 +14,15 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./voltify-core/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    restart: always
 
-  
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     container_name: voltify-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
+    restart: always
 
-  
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     container_name: voltify-kafka
@@ -33,10 +33,14 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # Multi-listener setup: internally inside docker on port 29092, externally from host on port 9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    restart: always
 
-  
   ignite:
     image: apacheignite/ignite:2.15.0
     container_name: voltify-ignite
@@ -44,6 +48,39 @@ services:
       - "10800:10800"
       - "47100:47100"
       - "47500:47500"
+    restart: always
+
+  # Spring Boot Core Backend Service
+  voltify-backend:
+    build:
+      context: ./voltify-core
+      dockerfile: Dockerfile
+    container_name: voltify-backend
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/voltifydb
+      - SPRING_DATASOURCE_USERNAME=voltify_user
+      - SPRING_DATASOURCE_PASSWORD=voltify_password
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - JWT_SECRET=${JWT_SECRET:-voltify-super-secret-key-must-be-at-least-32-characters-long}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    restart: always
+
+  # React 19 Frontend Web Service served by Nginx proxy
+  voltify-frontend:
+    build:
+      context: ./voltify-web
+      dockerfile: Dockerfile
+    container_name: voltify-frontend
+    depends_on:
+      - voltify-backend
+    ports:
+      - "80:80"
+    restart: always
 
 volumes:
   pgdata:
