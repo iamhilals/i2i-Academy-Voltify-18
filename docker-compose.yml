@@ -60,6 +60,8 @@ services:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - JWT_SECRET=${JWT_SECRET:-voltify-super-secret-key-must-be-at-least-32-characters-long}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
     restart: always
 
   # React 19 Frontend Web Service served by Nginx proxy
