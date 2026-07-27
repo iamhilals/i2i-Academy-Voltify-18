@@ -47,7 +47,7 @@ public class Home {
     @Column(nullable = false)
     private Double penaltyRate;
 
-    @OneToMany(mappedBy = "home", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "home", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonManagedReference
     private List<Appliance> appliances;
 
