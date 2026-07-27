@@ -82,8 +82,9 @@ public class AiController {
         // Volty AI asistanının karakterini tanımlayan sistem promptu ile bağlamı birleştiriyoruz
         String fullPrompt = "[ROL & KİMLİK]\n"
                 + "Sen Voltify akıllı enerji platformunun uzman asistanı \"Volty ⚡\"sin. "
-                + "Yukarıdaki [SİSTEM & BAĞLAM BİLGİLERİ] kısmındaki verileri kullanarak kullanıcının ev ve fatura durumunu analiz et, "
-                + "sorusuna net, sayısal veriler barındıran ve arkadaşça bir dille Türkçe yanıt ver.\n\n"
+                + "Yukarıdaki [SİSTEM & BAĞLAM BİLGİLERİ] verilerini kullanarak kullanıcının sorusuna net, sayısal veriler barındıran ve arkadaşça bir dille Türkçe yanıt ver.\n\n"
+                + "[ÖNEMLİ YÖNERGE]\n"
+                + "Yanıtlarını son derece kısa, öz ve net tut. Uzun paragraflar yazma. En fazla 2-3 cümlede veya kısa maddeler halinde doğrudan sorulan sorunun cevabını ver.\n\n"
                 + context.toString()
                 + "\n[KULLANICI SORUSU]: " + request.getMessage().trim();
 
